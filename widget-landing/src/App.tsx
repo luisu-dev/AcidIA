@@ -5,13 +5,34 @@ import {
   useScroll,
   useTransform,
   useSpring,
-  useMotionTemplate,
 } from "framer-motion";
 
-// Heurística ligera: Android o 4 hilos o menos → modo lowPower
+// ====== Rendimiento: detectar equipos modestos (Android, pocos hilos, dpr alto)
 const isAndroid = /Android/i.test(navigator.userAgent);
 const lowPower =
   isAndroid || (navigator.hardwareConcurrency || 8) <= 4 || window.devicePixelRatio >= 3;
+
+// ====== Colores de marca
+const PURPLE = "#550096";     // morado
+const GREEN  = "#04d9b5";     // turquesa
+
+// ====== Tema: dark/light auto con override por query ?theme=dark|light
+function useTheme(): "dark" | "light" {
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    const qp = new URLSearchParams(window.location.search).get("theme");
+    if (qp === "dark" || qp === "light") return qp;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  });
+  useEffect(() => {
+    const qp = new URLSearchParams(window.location.search).get("theme");
+    if (qp === "dark" || qp === "light") { setTheme(qp); return; }
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = (e: MediaQueryListEvent) => setTheme(e.matches ? "dark" : "light");
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  return theme;
+}
 
 /* ================== NAV (aparece tras el hero) ================== */
 function Nav({ active, visible }: { active: string; visible: boolean }) {
@@ -26,9 +47,12 @@ function Nav({ active, visible }: { active: string; visible: boolean }) {
       initial={false}
       animate={{ opacity: visible ? 1 : 0, y: visible ? 0 : -12 }}
       transition={{ duration: 0.25 }}
-      className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 rounded-2xl border border-white/10 bg-black/55 ${
-        lowPower ? "" : "backdrop-blur"
-      } px-2 py-2 ${visible ? "pointer-events-auto" : "pointer-events-none"}`}
+      className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 rounded-2xl border ${
+        // borde según tema con buena visibilidad
+        "border-white/10"
+      } ${lowPower ? "" : "backdrop-blur"} bg-black/55 px-2 py-2 ${
+        visible ? "pointer-events-auto" : "pointer-events-none"
+      }`}
     >
       <ul className="flex items-center gap-1">
         {items.map(({ id, label }) => {
@@ -55,11 +79,11 @@ function Nav({ active, visible }: { active: string; visible: boolean }) {
 
 /* ================== CONFIGURADOR DE PRECIOS ================== */
 const MODULES = [
-  { key: "core", name: "Lu Core", price: 2000, promoEligible: true, desc: "Burbuja web + IA 24/7" },
-  { key: "meta", name: "Módulo Meta", price: 1000, promoEligible: true, desc: "Facebook, Messenger, Instagram (comentarios y DM)" },
-  { key: "ecom", name: "Módulo e-Commerce", price: 1500, promoEligible: true, desc: "Catálogo, búsqueda, checkout" },
-  { key: "interact", name: "Módulos Interactivos", price: 1000, promoEligible: true, desc: "Pedidos con pago, notificaciones WhatsApp" },
-  { key: "wa", name: "Add-on WhatsApp", price: 500, promoEligible: false, desc: "Habilitación + mantenimiento (no entra a promo)" },
+  { key: "core", name: "Lu Core", price: 2000, promoEligible: true,  desc: "Burbuja web + IA 24/7" },
+  { key: "meta", name: "Módulo Meta", price: 1000, promoEligible: true,  desc: "Facebook, Messenger, Instagram (comentarios y DM)" },
+  { key: "ecom", name: "Módulo e-Commerce", price: 1500, promoEligible: true,  desc: "Catálogo, búsqueda, checkout" },
+  { key: "interact", name: "Módulos Interactivos", price: 1000, promoEligible: true,  desc: "Pedidos con pago, notificaciones WhatsApp" },
+  { key: "wa", name: "Add-on WhatsApp", price: 500,  promoEligible: false, desc: "Habilitación + mantenimiento (no entra a promo)" },
 ];
 
 function PricingConfigurator() {
@@ -144,18 +168,23 @@ function PricingConfigurator() {
 /* ================== APP ================== */
 export default function App() {
   const ref = useRef<HTMLDivElement>(null);
+  const theme = useTheme(); // "dark" | "light"
 
   // Scroll anim del hero
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
   const smooth = useSpring(scrollYProgress, { stiffness: 70, damping: 20, mass: 0.3 });
 
-  // Esfera: escala, blur y HUE (morado #550096 → turquesa #04d9b5)
+  // Tamaño / blur del humo (más barato en lowPower)
   const scale = useTransform(smooth, [0, 0.5, 1], lowPower ? [1, 2.2, 2.4] : [1, 3, 3.2]);
-  const smokeOpacity = useTransform(smooth, [0, 0.45, 0.6], [1, 0.5, 0]);
   const maxBlur = lowPower ? 14 : 26;
-  const blur = useTransform(smooth, [0, 0.6, 1], [6, Math.min(18, maxBlur), maxBlur]);
-  const hue = useTransform(smooth, [0, 0.7, 1], [0, 250, 272]);
-  const filter = useMotionTemplate`blur(${blur}px) hue-rotate(${hue}deg)`;
+  const blurVal = useTransform(smooth, [0, 0.6, 1], [6, Math.min(18, maxBlur), maxBlur]);
+
+  // Cross-fade entre capas morada y verde (sin hue-rotate)
+  // DARK:    morado -> verde      (purple visible al inicio, green al final)
+  // LIGHT:   verde  -> morado     (green visible al inicio, purple al final)
+  const purpleOpacity = useTransform(smooth, [0, 0.6, 1], theme === "dark" ? [1, 0.5, 0] : [0, 0.5, 1]);
+  const greenOpacity  = useTransform(smooth, [0, 0.6, 1], theme === "dark" ? [0, 0.5, 1] : [1, 0.5, 0]);
+  const smokeOpacity  = useTransform(smooth, [0, 0.45, 0.6], [1, 0.5, 0.0]); // desvanecer total hacia contenido
 
   // Navbar visible cuando pasas ~10% del hero
   const navOpacity = useTransform(smooth, [0.08, 0.12], [0, 1]);
@@ -190,7 +219,6 @@ export default function App() {
       tabQ.removeEventListener("change", update);
     };
   }, []);
-  // Parallax más suave en lowPower
   const strength = isTouch ? 0 : isTablet ? (lowPower ? 10 : 20) : (lowPower ? 20 : 40);
   const offsetX = coords.x * strength;
   const offsetY = coords.y * strength;
@@ -221,15 +249,22 @@ export default function App() {
     };
   }, []);
 
+  // Fondo base según tema
+  const pageBg = theme === "dark" ? "bg-black text-white" : "bg-white text-black";
+  const mutedText = theme === "dark" ? "text-white/80" : "text-black/70";
+  const dimText   = theme === "dark" ? "text-white/50" : "text-black/50";
+  const cardBg    = theme === "dark" ? "bg-white/5"   : "bg-black/5";
+  const borderCol = theme === "dark" ? "border-white/10" : "border-black/10";
+
   return (
-    <div ref={ref} className="relative min-h-[260vh] bg-black text-white">
+    <div ref={ref} className={`relative min-h-[260vh] ${pageBg}`}>
       <Nav active={active} visible={navVisible} />
 
       {/* ====== INICIO / HERO (solo bola + hint) ====== */}
       <section id="inicio" className="relative h-[140vh] z-0">
         <div className="sticky top-0 h-screen overflow-hidden">
-          {/* textura (se apaga en lowPower) */}
-          {!lowPower && (
+          {/* textura apagada en lowPower para rendimiento */}
+          {!lowPower && theme === "dark" && (
             <div
               className="absolute inset-0 pointer-events-none opacity-25"
               style={{
@@ -240,54 +275,90 @@ export default function App() {
               }}
             />
           )}
-          {/* esfera */}
+
+          {/* ESFERA: dos capas (morada y verde) + blur + cross-fade */}
           <motion.div
-            style={{ scale, opacity: smokeOpacity, filter, x: offsetX, y: offsetY }}
+            style={{ scale, opacity: smokeOpacity, x: offsetX, y: offsetY }}
             className="absolute inset-0 m-auto aspect-square w-[60vmin] rounded-full pointer-events-none will-change-transform"
           >
             <div className="relative w-full h-full">
-              {/* capa base siempre */}
-              <div
+              {/* Capa morada */}
+              <motion.div
+                style={{ opacity: purpleOpacity, filter: `blur(${lowPower ? 18 : 26}px)` }}
                 className="absolute inset-0 rounded-full mix-blend-screen"
-                style={{
-                  background:
-                    "radial-gradient(circle at 50% 55%, #550096 0%, rgba(85,0,150,0.7) 35%, rgba(85,0,150,0.25) 60%, transparent 70%)",
-                  filter: "blur(20px)",
-                }}
-              />
-              {/* capas extra solo en equipos potentes */}
-              {!lowPower && (
-                <>
-                  <div
-                    className="absolute inset-0 rounded-full mix-blend-screen"
-                    style={{
-                      background:
-                        "radial-gradient(circle at 45% 45%, rgba(121,43,189,0.9) 0%, rgba(121,43,189,0.6) 35%, rgba(121,43,189,0.2) 62%, transparent 72%)",
-                      filter: "blur(30px)",
-                    }}
-                  />
-                  <div
-                    className="absolute inset-0 rounded-full mix-blend-screen"
-                    style={{
-                      background:
-                        "radial-gradient(circle at 60% 50%, rgba(88,38,173,0.9) 0%, rgba(88,38,173,0.5) 40%, rgba(88,38,173,0.18) 66%, transparent 76%)",
-                      filter: "blur(26px)",
-                    }}
-                  />
-                </>
-              )}
+              >
+                <div
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    background: `radial-gradient(circle at 50% 55%, ${PURPLE} 0%, rgba(85,0,150,0.7) 35%, rgba(85,0,150,0.25) 60%, transparent 70%)`,
+                  }}
+                />
+                {!lowPower && (
+                  <>
+                    <div
+                      className="absolute inset-0 rounded-full"
+                      style={{
+                        background:
+                          "radial-gradient(circle at 45% 45%, rgba(121,43,189,0.9) 0%, rgba(121,43,189,0.6) 35%, rgba(121,43,189,0.2) 62%, transparent 72%)",
+                        filter: "blur(10px)",
+                      }}
+                    />
+                    <div
+                      className="absolute inset-0 rounded-full"
+                      style={{
+                        background:
+                          "radial-gradient(circle at 60% 50%, rgba(88,38,173,0.9) 0%, rgba(88,38,173,0.5) 40%, rgba(88,38,173,0.18) 66%, transparent 76%)",
+                        filter: "blur(8px)",
+                      }}
+                    />
+                  </>
+                )}
+              </motion.div>
+
+              {/* Capa verde */}
+              <motion.div
+                style={{ opacity: greenOpacity, filter: `blur(${blurVal.get()}px)` }}
+                className="absolute inset-0 rounded-full mix-blend-screen"
+              >
+                <div
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    background: `radial-gradient(circle at 50% 55%, ${GREEN} 0%, rgba(4,217,181,0.65) 35%, rgba(4,217,181,0.25) 60%, transparent 70%)`,
+                  }}
+                />
+                {!lowPower && (
+                  <>
+                    <div
+                      className="absolute inset-0 rounded-full"
+                      style={{
+                        background:
+                          "radial-gradient(circle at 45% 45%, rgba(3,185,154,0.9) 0%, rgba(3,185,154,0.55) 35%, rgba(3,185,154,0.2) 62%, transparent 72%)",
+                        filter: "blur(10px)",
+                      }}
+                    />
+                    <div
+                      className="absolute inset-0 rounded-full"
+                      style={{
+                        background:
+                          "radial-gradient(circle at 60% 50%, rgba(2,158,131,0.9) 0%, rgba(2,158,131,0.5) 40%, rgba(2,158,131,0.18) 66%, transparent 76%)",
+                        filter: "blur(8px)",
+                      }}
+                    />
+                  </>
+                )}
+              </motion.div>
             </div>
           </motion.div>
 
-          <div className="absolute inset-x-0 bottom-10 text-center text-xs tracking-widest uppercase opacity-60">
+          <div className={`absolute inset-x-0 bottom-10 text-center text-xs tracking-widest uppercase ${theme==="dark"?"opacity-60 text-white/90":"opacity-70 text-black/70"}`}>
             Desliza para revelar
           </div>
         </div>
       </section>
 
       {/* ====== QUIÉNES SOMOS ====== */}
-      <Section id="quienes-somos" title="¿Quiénes somos?">
-        <p className="text-lg text-white/80 leading-relaxed text-center max-w-3xl mx-auto">
+      <Section id="quienes-somos" title="¿Quiénes somos?" theme={theme}>
+        <p className={`text-lg ${mutedText} leading-relaxed text-center max-w-3xl mx-auto`}>
           Somos una empresa mexicana de soluciones de{" "}
           <span className="text-[#04d9b5]">inteligencia artificial</span>,{" "}
           <span className="text-[#04d9b5]">automatización</span> y{" "}
@@ -296,26 +367,26 @@ export default function App() {
           tomen mejores decisiones y escalen sin drama.
         </p>
         <div className="mt-12 grid md:grid-cols-3 gap-6 text-left">
-          <ValueCard title="Innovación">
+          <ValueCard title="Innovación" theme={theme}>
             Experimentamos, prototipamos y lanzamos soluciones que mueven la aguja.
           </ValueCard>
-          <ValueCard title="Oportunidad al talento nuevo">
+          <ValueCard title="Oportunidad al talento nuevo" theme={theme}>
             Nos oponemos a las puertas cerradas. Apostamos por mentes frescas con hambre de crecer.
           </ValueCard>
-          <ValueCard title="Transparencia">
+          <ValueCard title="Transparencia" theme={theme}>
             Nada de letras chiquitas. Arquitecturas, precios y alcances claros para avanzar parejo.
           </ValueCard>
         </div>
       </Section>
 
       {/* ====== PLANES ====== */}
-      <Section id="planes" title="Nuestros planes y precios">
-        <p className="text-lg text-center text-white/80 max-w-3xl mx-auto">
+      <Section id="planes" title="Nuestros planes y precios" theme={theme}>
+        <p className={`text-lg text-center ${mutedText} max-w-3xl mx-auto`}>
           Planes <span className="text-[#04d9b5]">modulares</span> que se adaptan a tu operación.
           Estamos en <span className="font-semibold text-[#04d9b5]">Founder’s Plan</span>:
           50% de descuento comprando 2 o más módulos.
           <br />
-          <span className="text-sm text-white/50">
+          <span className={`text-sm ${dimText}`}>
             * El add-on de WhatsApp (integración y mantenimiento) no entra en la promo.
           </span>
         </p>
@@ -324,38 +395,38 @@ export default function App() {
 
         <h3 className="mt-16 text-2xl font-semibold text-center">Paquetes recomendados</h3>
         <div className="mt-6 grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <PriceCard title="Social Boost" price="3,000">
+          <PriceCard title="Social Boost" price="3,000" theme={theme}>
             Lu Core + Módulo Meta
           </PriceCard>
-          <PriceCard title="e-Commerce" price="3,000">
+          <PriceCard title="e-Commerce" price="3,000" theme={theme}>
             Lu Core + Módulo e-Commerce
           </PriceCard>
-          <PriceCard title="Full Commerce" price="4,500">
+          <PriceCard title="Full Commerce" price="4,500" theme={theme}>
             Lu Core + e-Commerce + Meta
           </PriceCard>
-          <PriceCard title="Omnin" price="5,500">
+          <PriceCard title="Omnin" price="5,500" theme={theme}>
             Todos los módulos
           </PriceCard>
         </div>
 
-        <p className="text-sm text-white/50 mt-8 text-center">* Precios en MXN. No incluyen IVA.</p>
+        <p className={`text-sm ${dimText} mt-8 text-center`}>* Precios en MXN. No incluyen IVA.</p>
 
         <h3 className="mt-16 text-2xl font-semibold text-center">Páginas Web + IA</h3>
         <div className="mt-6 grid md:grid-cols-2 gap-6">
-          <PriceCard title="Web + Lu Core" price="5,000 inicial / 1,500 mensual">
+          <PriceCard title="Web + Lu Core" price="5,000 inicial / 1,500 mensual" theme={theme}>
             Dominio gratis por 1 año (sujeto a disponibilidad). 1 correo gratis o Gmail a mitad de precio (hasta 5 cuentas).
           </PriceCard>
-          <PriceCard title="Web + e-Commerce" price="6,000 inicial / 2,000 mensual">
+          <PriceCard title="Web + e-Commerce" price="6,000 inicial / 2,000 mensual" theme={theme}>
             Incluye apps de e-Commerce. Mismos beneficios de dominio y correo.
           </PriceCard>
         </div>
 
-        <NoteWhatsApp />
+        <NoteWhatsApp theme={theme} />
       </Section>
 
       {/* ====== CONTACTO ====== */}
-      <Section id="contacto" title="Contacto">
-        <p className="text-lg text-white/80 mb-10 text-center">
+      <Section id="contacto" title="Contacto" theme={theme}>
+        <p className={`text-lg ${mutedText} mb-10 text-center`}>
           Hablemos. Podemos mostrarte una demo, resolver dudas y armar un plan a tu medida.
           Si lo prefieres, déjanos tus datos y te escribimos en menos de 24 horas.
         </p>
@@ -363,17 +434,17 @@ export default function App() {
           <input
             type="text"
             placeholder="Tu nombre"
-            className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#04d9b5]"
+            className={`px-4 py-3 rounded-xl ${cardBg} border ${borderCol} focus:outline-none focus:ring-2 focus:ring-[#04d9b5]`}
           />
           <input
             type="email"
             placeholder="Tu correo"
-            className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#04d9b5]"
+            className={`px-4 py-3 rounded-xl ${cardBg} border ${borderCol} focus:outline-none focus:ring-2 focus:ring-[#04d9b5]`}
           />
           <textarea
             rows={4}
             placeholder="Cuéntanos de tu proyecto"
-            className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#04d9b5]"
+            className={`px-4 py-3 rounded-xl ${cardBg} border ${borderCol} focus:outline-none focus:ring-2 focus:ring-[#04d9b5]`}
           />
           <button
             type="submit"
@@ -388,46 +459,86 @@ export default function App() {
 }
 
 /* ================== UI REUSABLE ================== */
-function Section({ id, title, children }: { id?: string; title: string; children: ReactNode }) {
+function Section({
+  id,
+  title,
+  children,
+  theme,
+}: {
+  id?: string;
+  title: string;
+  children: ReactNode;
+  theme: "dark" | "light";
+}) {
   return (
     <section id={id} className="px-6 py-24">
       <div className="mx-auto max-w-6xl">
-        <h2 className="text-4xl md:text-5xl font-bold mb-6 text-center">{title}</h2>
+        <h2
+          className={`text-4xl md:text-5xl font-bold mb-6 text-center ${
+            theme === "dark" ? "text-white" : "text-black"
+          }`}
+        >
+          {title}
+        </h2>
         <div>{children}</div>
       </div>
     </section>
   );
 }
 
-function ValueCard({ title, children }: { title: string; children: ReactNode }) {
+function ValueCard({
+  title,
+  children,
+  theme,
+}: {
+  title: string;
+  children: ReactNode;
+  theme: "dark" | "light";
+}) {
+  const cardBg = theme === "dark" ? "bg-white/5" : "bg-black/5";
+  const borderCol = theme === "dark" ? "border-white/10" : "border-black/10";
+  const accentTitle = theme === "dark" ? "text-[#183df2]" : "text-[#183df2]";
+  const textMuted = theme === "dark" ? "text-white/70" : "text-black/70";
   return (
-    <div className="p-6 bg-white/5 rounded-2xl border border-white/10">
-      <h3 className="text-xl font-semibold mb-2 text-[#183df2]">{title}</h3>
-      <p className="text-white/70">{children}</p>
+    <div className={`p-6 ${cardBg} rounded-2xl border ${borderCol}`}>
+      <h3 className={`text-xl font-semibold mb-2 ${accentTitle}`}>{title}</h3>
+      <p className={textMuted}>{children}</p>
     </div>
   );
 }
 
-function PriceCard({ title, price, children }: { title: string; price?: string; children: ReactNode }) {
+function PriceCard({
+  title,
+  price,
+  children,
+  theme,
+}: {
+  title: string;
+  price?: string;
+  children: ReactNode;
+  theme: "dark" | "light";
+}) {
+  const cardBg = theme === "dark" ? "bg-white/5" : "bg-black/5";
+  const borderCol = theme === "dark" ? "border-white/10" : "border-black/10";
+  const titleCol = theme === "dark" ? "text-white/90" : "text-black/90";
+  const textCol = theme === "dark" ? "text-white/70" : "text-black/70";
   return (
-    <div
-      className={`rounded-2xl p-6 bg-white/5 border border-white/10 ${
-        lowPower ? "" : "backdrop-blur"
-      }`}
-    >
+    <div className={`rounded-2xl p-6 ${cardBg} border ${borderCol} ${lowPower ? "" : "backdrop-blur"}`}>
       <div className="flex items-baseline justify-between gap-4">
-        <h4 className="text-xl font-semibold text-white/90">{title}</h4>
+        <h4 className={`text-xl font-semibold ${titleCol}`}>{title}</h4>
         {price && <div className="text-[#04d9b5] font-semibold">MXN {price}</div>}
       </div>
-      <div className="mt-3 text-white/70">{children}</div>
+      <div className={`mt-3 ${textCol}`}>{children}</div>
     </div>
   );
 }
 
-function NoteWhatsApp() {
+function NoteWhatsApp({ theme }: { theme: "dark" | "light" }) {
+  const dimText = theme === "dark" ? "text-white/60" : "text-black/60";
+  const strong = theme === "dark" ? "text-white/80" : "text-black/80";
   return (
-    <div className="mt-8 text-sm text-white/60 text-center">
-      <span className="font-semibold text-white/80">Nota:</span> integración de WhatsApp Business disponible como add-on.
+    <div className={`mt-8 text-sm ${dimText} text-center`}>
+      <span className={`font-semibold ${strong}`}>Nota:</span> integración de WhatsApp Business disponible como add-on.
       Incluye habilitación y mantenimiento mensual. Ideal para notificaciones, pedidos y atención directa.
     </div>
   );
