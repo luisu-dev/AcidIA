@@ -6,6 +6,12 @@ import { motion, useScroll, useTransform, useSpring } from "framer-motion";
 const isAndroid = /Android/i.test(navigator.userAgent);
 const lowPower =
   isAndroid || (navigator.hardwareConcurrency || 8) <= 4 || window.devicePixelRatio >= 3;
+// Blend por tema: screen en dark, multiply en light (para que el color sí “tinte” sobre blanco)
+const blendMode = theme === "dark" ? "screen" : "multiply";
+
+// ¿Animaciones recortadas en dispositivos modestos?
+const animLow = lowPower; // si quieres, añade || isTouch para cortar también en móvil
+
 
 /* ================== Colores de marca ================== */
 const PURPLE = "#550096"; // morado
@@ -198,23 +204,26 @@ export default function App() {
 
   // Tamaño / blur (capado en lowPower)
   const scale = useTransform(smooth, [0, 0.5, 1], lowPower ? [1, 2.2, 2.4] : [1, 3, 3.2]);
-  const maxBlur = lowPower ? 14 : 26;
-  const blurVal = useTransform(smooth, [0, 0.6, 1], [6, Math.min(18, maxBlur), maxBlur]);
+  const maxBlur = lowPower ? 0 : 26;
+  const blurVal = useTransform(smooth, [0, 0.6, 1], [0, 18, maxBlur]);
+  const blurCss = blurVal.to((v) => (v <= 0 ? "none" : `blur(${Math.round(v)}px)`));
+
 
   // Cross-fade morado/verde que reacciona al tema
   const { purpleOpacity, greenOpacity } = useMemo(() => {
     const purple = useTransform(
       smooth,
       [0, 0.6, 1],
-      theme === "dark" ? [1, 0.5, 0] : [0, 0.5, 1]
+      theme === "dark" ? [1, 0.55, 0] : [0, 0.45, 1]
     );
     const green = useTransform(
       smooth,
       [0, 0.6, 1],
-      theme === "dark" ? [0, 0.5, 1] : [1, 0.5, 0]
+      theme === "dark" ? [0, 0.45, 1] : [1, 0.55, 0]
     );
     return { purpleOpacity: purple, greenOpacity: green };
   }, [smooth, theme]);
+
 
   // Desvanecer esfera al contenido
   const smokeOpacity = useTransform(smooth, [0, 0.45, 0.6], [1, 0.5, 0]);
