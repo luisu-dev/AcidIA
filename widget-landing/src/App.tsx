@@ -6,16 +6,10 @@ import { motion, useScroll, useTransform, useSpring } from "framer-motion";
 const isAndroid = /Android/i.test(navigator.userAgent);
 const lowPower =
   isAndroid || (navigator.hardwareConcurrency || 8) <= 4 || window.devicePixelRatio >= 3;
-// Blend por tema: screen en dark, multiply en light (para que el color sí “tinte” sobre blanco)
-const blendMode = theme === "dark" ? "screen" : "multiply";
-
-// ¿Animaciones recortadas en dispositivos modestos?
-const animLow = lowPower; // si quieres, añade || isTouch para cortar también en móvil
-
 
 /* ================== Colores de marca ================== */
 const PURPLE = "#550096"; // morado
-const GREEN = "#04d9b5";  // turquesa
+const GREEN = "#04d9b5"; // turquesa
 
 /* ================== Tema: dark/light auto (+ override por query) ================== */
 function useTheme(): "dark" | "light" {
@@ -27,7 +21,10 @@ function useTheme(): "dark" | "light" {
 
   useEffect(() => {
     const qp = new URLSearchParams(window.location.search).get("theme");
-    if (qp === "dark" || qp === "light") { setTheme(qp); return; }
+    if (qp === "dark" || qp === "light") {
+      setTheme(qp);
+      return;
+    }
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = (e: MediaQueryListEvent) => setTheme(e.matches ? "dark" : "light");
     mq.addEventListener("change", onChange);
@@ -43,7 +40,6 @@ function SmokeFilterDefs() {
     <svg className="absolute w-0 h-0" aria-hidden>
       <defs>
         <filter id="smoke-texture" x="-20%" y="-20%" width="140%" height="140%">
-          {/* ruido fractal (suave) */}
           <feTurbulence
             type="fractalNoise"
             baseFrequency="0.012"
@@ -51,7 +47,6 @@ function SmokeFilterDefs() {
             seed="7"
             result="noise"
           />
-          {/* deforma el contenido según el ruido */}
           <feDisplacementMap
             in="SourceGraphic"
             in2="noise"
@@ -134,9 +129,11 @@ function PricingConfigurator() {
       <div className="lg:col-span-2 grid sm:grid-cols-2 gap-4">
         {MODULES.map((m) => {
           const on = selected.includes(m.key);
-          const eligibles = selected.filter((k) => MODULES.find(x => x.key === k)?.promoEligible).length;
-          const discounted = m.promoEligible && eligibles >= 2;
-          const final = discounted ? Math.round(m.price * 0.5) : m.price;
+          const eligibles = selected.filter(
+            (k) => MODULES.find((x) => x.key === k)?.promoEligible
+          ).length;
+        const discounted = m.promoEligible && eligibles >= 2;
+        const final = discounted ? Math.round(m.price * 0.5) : m.price;
           return (
             <button
               key={m.key}
@@ -198,16 +195,19 @@ export default function App() {
   const ref = useRef<HTMLDivElement>(null);
   const theme = useTheme(); // "dark" | "light"
 
+  // Blend por tema: screen (dark) / multiply (light)
+  const blendMode = theme === "dark" ? "screen" : "multiply";
+  const animLow = lowPower; // recorte de animaciones en Android/equipos modestos
+
   // Scroll anim del hero
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
   const smooth = useSpring(scrollYProgress, { stiffness: 70, damping: 20, mass: 0.3 });
 
   // Tamaño / blur (capado en lowPower)
-  const scale = useTransform(smooth, [0, 0.5, 1], lowPower ? [1, 2.2, 2.4] : [1, 3, 3.2]);
-  const maxBlur = lowPower ? 0 : 26;
+  const scale = useTransform(smooth, [0, 0.5, 1], animLow ? [1, 2.2, 2.4] : [1, 3, 3.2]);
+  const maxBlur = animLow ? 0 : 26;
   const blurVal = useTransform(smooth, [0, 0.6, 1], [0, 18, maxBlur]);
   const blurCss = blurVal.to((v) => (v <= 0 ? "none" : `blur(${Math.round(v)}px)`));
-
 
   // Cross-fade morado/verde que reacciona al tema
   const { purpleOpacity, greenOpacity } = useMemo(() => {
@@ -223,7 +223,6 @@ export default function App() {
     );
     return { purpleOpacity: purple, greenOpacity: green };
   }, [smooth, theme]);
-
 
   // Desvanecer esfera al contenido
   const smokeOpacity = useTransform(smooth, [0, 0.45, 0.6], [1, 0.5, 0]);
@@ -243,7 +242,10 @@ export default function App() {
   useEffect(() => {
     const touchQ = window.matchMedia("(pointer: coarse)");
     const tabQ = window.matchMedia("(max-width: 1024px)");
-    const update = () => { setIsTouch(touchQ.matches); setIsTablet(tabQ.matches); };
+    const update = () => {
+      setIsTouch(touchQ.matches);
+      setIsTablet(tabQ.matches);
+    };
     update();
     const onMouse = (e: MouseEvent) => {
       const { innerWidth, innerHeight } = window;
@@ -261,7 +263,7 @@ export default function App() {
       tabQ.removeEventListener("change", update);
     };
   }, []);
-  const strength = isTouch ? 0 : isTablet ? (lowPower ? 10 : 20) : (lowPower ? 20 : 40);
+  const strength = isTouch ? 0 : isTablet ? (animLow ? 6 : 16) : (animLow ? 10 : 32);
   const offsetX = coords.x * strength;
   const offsetY = coords.y * strength;
 
@@ -300,14 +302,14 @@ export default function App() {
 
   return (
     <div ref={ref} className={`relative min-h-[260vh] ${pageBg}`}>
-      {!lowPower && <SmokeFilterDefs />}
+      {!animLow && <SmokeFilterDefs />}
       <Nav active={active} visible={navVisible} />
 
       {/* ====== INICIO / HERO ====== */}
       <section id="inicio" className="relative h-[140vh] z-0">
         <div className="sticky top-0 h-screen overflow-hidden">
-          {/* Textura de fondo (solo dark y equipos potentes) */}
-          {!lowPower && theme === "dark" && (
+          {/* textura sutil solo en dark y equipos potentes */}
+          {!animLow && theme === "dark" && (
             <div
               className="absolute inset-0 pointer-events-none opacity-25"
               style={{
@@ -319,81 +321,57 @@ export default function App() {
             />
           )}
 
-          {/* Esfera con textura (contiene capas morada/verde) */}
+          {/* Esfera (capas morada y verde). En lowPower sin filtros caros */}
           <motion.div
             style={{
               scale,
               opacity: smokeOpacity,
-              x: offsetX,
-              y: offsetY,
-              filter: !lowPower ? "url(#smoke-texture)" : "none",
+              x: animLow ? 0 : offsetX,
+              y: animLow ? 0 : offsetY,
+              filter: "none", // textura SVG desactivada por defecto; actívala si quieres en desktop
             }}
             className="absolute inset-0 m-auto aspect-square w-[60vmin] rounded-full pointer-events-none will-change-transform"
           >
             {/* Capa MORADA */}
             <motion.div
-              style={{ opacity: purpleOpacity, filter: `blur(${lowPower ? 18 : 26}px)` }}
-              className="absolute inset-0 rounded-full mix-blend-screen"
+              style={{
+                opacity: purpleOpacity,
+                filter: animLow ? "none" : "blur(22px)",
+                mixBlendMode: blendMode as any,
+              }}
+              className="absolute inset-0 rounded-full"
             >
               <div
                 className="absolute inset-0 rounded-full"
                 style={{
-                  background: `radial-gradient(circle at 50% 55%, ${PURPLE} 0%, rgba(85,0,150,0.7) 35%, rgba(85,0,150,0.25) 60%, transparent 70%)`,
+                  background: `radial-gradient(circle at 50% 55%, ${PURPLE} 0%, rgba(85,0,150,${
+                    theme === "dark" ? 0.7 : 0.85
+                  }) 36%, rgba(85,0,150,${
+                    theme === "dark" ? 0.25 : 0.4
+                  }) 62%, transparent 72%)`,
                 }}
               />
-              {!lowPower && (
-                <>
-                  <div
-                    className="absolute inset-0 rounded-full"
-                    style={{
-                      background:
-                        "radial-gradient(circle at 45% 45%, rgba(121,43,189,0.9) 0%, rgba(121,43,189,0.6) 35%, rgba(121,43,189,0.2) 62%, transparent 72%)",
-                      filter: "blur(10px)",
-                    }}
-                  />
-                  <div
-                    className="absolute inset-0 rounded-full"
-                    style={{
-                      background:
-                        "radial-gradient(circle at 60% 50%, rgba(88,38,173,0.9) 0%, rgba(88,38,173,0.5) 40%, rgba(88,38,173,0.18) 66%, transparent 76%)",
-                      filter: "blur(8px)",
-                    }}
-                  />
-                </>
-              )}
             </motion.div>
 
             {/* Capa VERDE */}
             <motion.div
-              style={{ opacity: greenOpacity, filter: blurVal.to((v) => `blur(${v}px)`) }}
-              className="absolute inset-0 rounded-full mix-blend-screen"
+              style={{
+                opacity: greenOpacity,
+                filter: animLow ? "none" : blurCss,
+                mixBlendMode: blendMode as any,
+              }}
+              className="absolute inset-0 rounded-full"
             >
               <div
                 className="absolute inset-0 rounded-full"
                 style={{
-                  background: `radial-gradient(circle at 50% 55%, ${GREEN} 0%, rgba(4,217,181,0.65) 35%, rgba(4,217,181,0.25) 60%, transparent 70%)`,
+                  background: `radial-gradient(circle at 50% 55%, ${GREEN} 0%, rgba(4,217,181,${
+                    theme === "dark" ? 0.65 : 0.9
+                  }) 36%, rgba(4,217,181,${
+                    theme === "dark" ? 0.25 : 0.4
+                  }) 62%, transparent 72%)`,
                 }}
               />
-              {!lowPower && (
-                <>
-                  <div
-                    className="absolute inset-0 rounded-full"
-                    style={{
-                      background:
-                        "radial-gradient(circle at 45% 45%, rgba(3,185,154,0.9) 0%, rgba(3,185,154,0.55) 35%, rgba(3,185,154,0.2) 62%, transparent 72%)",
-                      filter: "blur(10px)",
-                    }}
-                  />
-                  <div
-                    className="absolute inset-0 rounded-full"
-                    style={{
-                      background:
-                        "radial-gradient(circle at 60% 50%, rgba(2,158,131,0.9) 0%, rgba(2,158,131,0.5) 40%, rgba(2,158,131,0.18) 66%, transparent 76%)",
-                      filter: "blur(8px)",
-                    }}
-                  />
-                </>
-              )}
             </motion.div>
           </motion.div>
 
@@ -574,7 +552,11 @@ function PriceCard({
   const titleCol = theme === "dark" ? "text-white/90" : "text-black/90";
   const textCol = theme === "dark" ? "text-white/70" : "text-black/70";
   return (
-    <div className={`rounded-2xl p-6 ${cardBg} border ${borderCol} ${lowPower ? "" : "backdrop-blur"}`}>
+    <div
+      className={`rounded-2xl p-6 ${cardBg} border ${borderCol} ${
+        lowPower ? "" : "backdrop-blur"
+      }`}
+    >
       <div className="flex items-baseline justify-between gap-4">
         <h4 className={`text-xl font-semibold ${titleCol}`}>{title}</h4>
         {price && <div className="text-[#04d9b5] font-semibold">MXN {price}</div>}
@@ -594,3 +576,4 @@ function NoteWhatsApp({ theme }: { theme: "dark" | "light" }) {
     </div>
   );
 }
+
