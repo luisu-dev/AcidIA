@@ -1,28 +1,24 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
 import type { ReactNode } from "react";
-import {
-  motion,
-  useScroll,
-  useTransform,
-  useSpring,
-} from "framer-motion";
+import { motion, useScroll, useTransform, useSpring } from "framer-motion";
 
-// ====== Rendimiento: detectar equipos modestos (Android, pocos hilos, dpr alto)
+/* ================== Rendimiento: detectar equipos modestos ================== */
 const isAndroid = /Android/i.test(navigator.userAgent);
 const lowPower =
   isAndroid || (navigator.hardwareConcurrency || 8) <= 4 || window.devicePixelRatio >= 3;
 
-// ====== Colores de marca
-const PURPLE = "#550096";     // morado
-const GREEN  = "#04d9b5";     // turquesa
+/* ================== Colores de marca ================== */
+const PURPLE = "#550096"; // morado
+const GREEN = "#04d9b5";  // turquesa
 
-// ====== Tema: dark/light auto con override por query ?theme=dark|light
+/* ================== Tema: dark/light auto (+ override por query) ================== */
 function useTheme(): "dark" | "light" {
   const [theme, setTheme] = useState<"dark" | "light">(() => {
     const qp = new URLSearchParams(window.location.search).get("theme");
     if (qp === "dark" || qp === "light") return qp;
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   });
+
   useEffect(() => {
     const qp = new URLSearchParams(window.location.search).get("theme");
     if (qp === "dark" || qp === "light") { setTheme(qp); return; }
@@ -31,7 +27,36 @@ function useTheme(): "dark" | "light" {
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
   }, []);
+
   return theme;
+}
+
+/* ================== Filtro SVG de textura (humo) ================== */
+function SmokeFilterDefs() {
+  return (
+    <svg className="absolute w-0 h-0" aria-hidden>
+      <defs>
+        <filter id="smoke-texture" x="-20%" y="-20%" width="140%" height="140%">
+          {/* ruido fractal (suave) */}
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.012"
+            numOctaves="2"
+            seed="7"
+            result="noise"
+          />
+          {/* deforma el contenido según el ruido */}
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="noise"
+            scale="14"
+            xChannelSelector="R"
+            yChannelSelector="G"
+          />
+        </filter>
+      </defs>
+    </svg>
+  );
 }
 
 /* ================== NAV (aparece tras el hero) ================== */
@@ -47,12 +72,9 @@ function Nav({ active, visible }: { active: string; visible: boolean }) {
       initial={false}
       animate={{ opacity: visible ? 1 : 0, y: visible ? 0 : -12 }}
       transition={{ duration: 0.25 }}
-      className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 rounded-2xl border ${
-        // borde según tema con buena visibilidad
-        "border-white/10"
-      } ${lowPower ? "" : "backdrop-blur"} bg-black/55 px-2 py-2 ${
-        visible ? "pointer-events-auto" : "pointer-events-none"
-      }`}
+      className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 rounded-2xl border border-white/10 bg-black/55 ${
+        lowPower ? "" : "backdrop-blur"
+      } px-2 py-2 ${visible ? "pointer-events-auto" : "pointer-events-none"}`}
     >
       <ul className="flex items-center gap-1">
         {items.map(({ id, label }) => {
@@ -79,11 +101,11 @@ function Nav({ active, visible }: { active: string; visible: boolean }) {
 
 /* ================== CONFIGURADOR DE PRECIOS ================== */
 const MODULES = [
-  { key: "core", name: "Lu Core", price: 2000, promoEligible: true,  desc: "Burbuja web + IA 24/7" },
-  { key: "meta", name: "Módulo Meta", price: 1000, promoEligible: true,  desc: "Facebook, Messenger, Instagram (comentarios y DM)" },
-  { key: "ecom", name: "Módulo e-Commerce", price: 1500, promoEligible: true,  desc: "Catálogo, búsqueda, checkout" },
-  { key: "interact", name: "Módulos Interactivos", price: 1000, promoEligible: true,  desc: "Pedidos con pago, notificaciones WhatsApp" },
-  { key: "wa", name: "Add-on WhatsApp", price: 500,  promoEligible: false, desc: "Habilitación + mantenimiento (no entra a promo)" },
+  { key: "core", name: "Lu Core", price: 2000, promoEligible: true, desc: "Burbuja web + IA 24/7" },
+  { key: "meta", name: "Módulo Meta", price: 1000, promoEligible: true, desc: "Facebook, Messenger, Instagram (comentarios y DM)" },
+  { key: "ecom", name: "Módulo e-Commerce", price: 1500, promoEligible: true, desc: "Catálogo, búsqueda, checkout" },
+  { key: "interact", name: "Módulos Interactivos", price: 1000, promoEligible: true, desc: "Pedidos con pago, notificaciones WhatsApp" },
+  { key: "wa", name: "Add-on WhatsApp", price: 500, promoEligible: false, desc: "Habilitación + mantenimiento (no entra a promo)" },
 ];
 
 function PricingConfigurator() {
@@ -174,17 +196,28 @@ export default function App() {
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
   const smooth = useSpring(scrollYProgress, { stiffness: 70, damping: 20, mass: 0.3 });
 
-  // Tamaño / blur del humo (más barato en lowPower)
+  // Tamaño / blur (capado en lowPower)
   const scale = useTransform(smooth, [0, 0.5, 1], lowPower ? [1, 2.2, 2.4] : [1, 3, 3.2]);
   const maxBlur = lowPower ? 14 : 26;
   const blurVal = useTransform(smooth, [0, 0.6, 1], [6, Math.min(18, maxBlur), maxBlur]);
 
-  // Cross-fade entre capas morada y verde (sin hue-rotate)
-  // DARK:    morado -> verde      (purple visible al inicio, green al final)
-  // LIGHT:   verde  -> morado     (green visible al inicio, purple al final)
-  const purpleOpacity = useTransform(smooth, [0, 0.6, 1], theme === "dark" ? [1, 0.5, 0] : [0, 0.5, 1]);
-  const greenOpacity  = useTransform(smooth, [0, 0.6, 1], theme === "dark" ? [0, 0.5, 1] : [1, 0.5, 0]);
-  const smokeOpacity  = useTransform(smooth, [0, 0.45, 0.6], [1, 0.5, 0.0]); // desvanecer total hacia contenido
+  // Cross-fade morado/verde que reacciona al tema
+  const { purpleOpacity, greenOpacity } = useMemo(() => {
+    const purple = useTransform(
+      smooth,
+      [0, 0.6, 1],
+      theme === "dark" ? [1, 0.5, 0] : [0, 0.5, 1]
+    );
+    const green = useTransform(
+      smooth,
+      [0, 0.6, 1],
+      theme === "dark" ? [0, 0.5, 1] : [1, 0.5, 0]
+    );
+    return { purpleOpacity: purple, greenOpacity: green };
+  }, [smooth, theme]);
+
+  // Desvanecer esfera al contenido
+  const smokeOpacity = useTransform(smooth, [0, 0.45, 0.6], [1, 0.5, 0]);
 
   // Navbar visible cuando pasas ~10% del hero
   const navOpacity = useTransform(smooth, [0.08, 0.12], [0, 1]);
@@ -252,18 +285,19 @@ export default function App() {
   // Fondo base según tema
   const pageBg = theme === "dark" ? "bg-black text-white" : "bg-white text-black";
   const mutedText = theme === "dark" ? "text-white/80" : "text-black/70";
-  const dimText   = theme === "dark" ? "text-white/50" : "text-black/50";
-  const cardBg    = theme === "dark" ? "bg-white/5"   : "bg-black/5";
+  const dimText = theme === "dark" ? "text-white/50" : "text-black/50";
+  const cardBg = theme === "dark" ? "bg-white/5" : "bg-black/5";
   const borderCol = theme === "dark" ? "border-white/10" : "border-black/10";
 
   return (
     <div ref={ref} className={`relative min-h-[260vh] ${pageBg}`}>
+      {!lowPower && <SmokeFilterDefs />}
       <Nav active={active} visible={navVisible} />
 
-      {/* ====== INICIO / HERO (solo bola + hint) ====== */}
+      {/* ====== INICIO / HERO ====== */}
       <section id="inicio" className="relative h-[140vh] z-0">
         <div className="sticky top-0 h-screen overflow-hidden">
-          {/* textura apagada en lowPower para rendimiento */}
+          {/* Textura de fondo (solo dark y equipos potentes) */}
           {!lowPower && theme === "dark" && (
             <div
               className="absolute inset-0 pointer-events-none opacity-25"
@@ -276,81 +310,89 @@ export default function App() {
             />
           )}
 
-          {/* ESFERA: dos capas (morada y verde) + blur + cross-fade */}
+          {/* Esfera con textura (contiene capas morada/verde) */}
           <motion.div
-            style={{ scale, opacity: smokeOpacity, x: offsetX, y: offsetY }}
+            style={{
+              scale,
+              opacity: smokeOpacity,
+              x: offsetX,
+              y: offsetY,
+              filter: !lowPower ? "url(#smoke-texture)" : "none",
+            }}
             className="absolute inset-0 m-auto aspect-square w-[60vmin] rounded-full pointer-events-none will-change-transform"
           >
-            <div className="relative w-full h-full">
-              {/* Capa morada */}
-              <motion.div
-                style={{ opacity: purpleOpacity, filter: `blur(${lowPower ? 18 : 26}px)` }}
-                className="absolute inset-0 rounded-full mix-blend-screen"
-              >
-                <div
-                  className="absolute inset-0 rounded-full"
-                  style={{
-                    background: `radial-gradient(circle at 50% 55%, ${PURPLE} 0%, rgba(85,0,150,0.7) 35%, rgba(85,0,150,0.25) 60%, transparent 70%)`,
-                  }}
-                />
-                {!lowPower && (
-                  <>
-                    <div
-                      className="absolute inset-0 rounded-full"
-                      style={{
-                        background:
-                          "radial-gradient(circle at 45% 45%, rgba(121,43,189,0.9) 0%, rgba(121,43,189,0.6) 35%, rgba(121,43,189,0.2) 62%, transparent 72%)",
-                        filter: "blur(10px)",
-                      }}
-                    />
-                    <div
-                      className="absolute inset-0 rounded-full"
-                      style={{
-                        background:
-                          "radial-gradient(circle at 60% 50%, rgba(88,38,173,0.9) 0%, rgba(88,38,173,0.5) 40%, rgba(88,38,173,0.18) 66%, transparent 76%)",
-                        filter: "blur(8px)",
-                      }}
-                    />
-                  </>
-                )}
-              </motion.div>
+            {/* Capa MORADA */}
+            <motion.div
+              style={{ opacity: purpleOpacity, filter: `blur(${lowPower ? 18 : 26}px)` }}
+              className="absolute inset-0 rounded-full mix-blend-screen"
+            >
+              <div
+                className="absolute inset-0 rounded-full"
+                style={{
+                  background: `radial-gradient(circle at 50% 55%, ${PURPLE} 0%, rgba(85,0,150,0.7) 35%, rgba(85,0,150,0.25) 60%, transparent 70%)`,
+                }}
+              />
+              {!lowPower && (
+                <>
+                  <div
+                    className="absolute inset-0 rounded-full"
+                    style={{
+                      background:
+                        "radial-gradient(circle at 45% 45%, rgba(121,43,189,0.9) 0%, rgba(121,43,189,0.6) 35%, rgba(121,43,189,0.2) 62%, transparent 72%)",
+                      filter: "blur(10px)",
+                    }}
+                  />
+                  <div
+                    className="absolute inset-0 rounded-full"
+                    style={{
+                      background:
+                        "radial-gradient(circle at 60% 50%, rgba(88,38,173,0.9) 0%, rgba(88,38,173,0.5) 40%, rgba(88,38,173,0.18) 66%, transparent 76%)",
+                      filter: "blur(8px)",
+                    }}
+                  />
+                </>
+              )}
+            </motion.div>
 
-              {/* Capa verde */}
-              <motion.div
-                style={{ opacity: greenOpacity, filter: `blur(${blurVal.get()}px)` }}
-                className="absolute inset-0 rounded-full mix-blend-screen"
-              >
-                <div
-                  className="absolute inset-0 rounded-full"
-                  style={{
-                    background: `radial-gradient(circle at 50% 55%, ${GREEN} 0%, rgba(4,217,181,0.65) 35%, rgba(4,217,181,0.25) 60%, transparent 70%)`,
-                  }}
-                />
-                {!lowPower && (
-                  <>
-                    <div
-                      className="absolute inset-0 rounded-full"
-                      style={{
-                        background:
-                          "radial-gradient(circle at 45% 45%, rgba(3,185,154,0.9) 0%, rgba(3,185,154,0.55) 35%, rgba(3,185,154,0.2) 62%, transparent 72%)",
-                        filter: "blur(10px)",
-                      }}
-                    />
-                    <div
-                      className="absolute inset-0 rounded-full"
-                      style={{
-                        background:
-                          "radial-gradient(circle at 60% 50%, rgba(2,158,131,0.9) 0%, rgba(2,158,131,0.5) 40%, rgba(2,158,131,0.18) 66%, transparent 76%)",
-                        filter: "blur(8px)",
-                      }}
-                    />
-                  </>
-                )}
-              </motion.div>
-            </div>
+            {/* Capa VERDE */}
+            <motion.div
+              style={{ opacity: greenOpacity, filter: blurVal.to((v) => `blur(${v}px)`) }}
+              className="absolute inset-0 rounded-full mix-blend-screen"
+            >
+              <div
+                className="absolute inset-0 rounded-full"
+                style={{
+                  background: `radial-gradient(circle at 50% 55%, ${GREEN} 0%, rgba(4,217,181,0.65) 35%, rgba(4,217,181,0.25) 60%, transparent 70%)`,
+                }}
+              />
+              {!lowPower && (
+                <>
+                  <div
+                    className="absolute inset-0 rounded-full"
+                    style={{
+                      background:
+                        "radial-gradient(circle at 45% 45%, rgba(3,185,154,0.9) 0%, rgba(3,185,154,0.55) 35%, rgba(3,185,154,0.2) 62%, transparent 72%)",
+                      filter: "blur(10px)",
+                    }}
+                  />
+                  <div
+                    className="absolute inset-0 rounded-full"
+                    style={{
+                      background:
+                        "radial-gradient(circle at 60% 50%, rgba(2,158,131,0.9) 0%, rgba(2,158,131,0.5) 40%, rgba(2,158,131,0.18) 66%, transparent 76%)",
+                      filter: "blur(8px)",
+                    }}
+                  />
+                </>
+              )}
+            </motion.div>
           </motion.div>
 
-          <div className={`absolute inset-x-0 bottom-10 text-center text-xs tracking-widest uppercase ${theme==="dark"?"opacity-60 text-white/90":"opacity-70 text-black/70"}`}>
+          <div
+            className={`absolute inset-x-0 bottom-10 text-center text-xs tracking-widest uppercase ${
+              theme === "dark" ? "opacity-60 text-white/90" : "opacity-70 text-black/70"
+            }`}
+          >
             Desliza para revelar
           </div>
         </div>
@@ -497,7 +539,7 @@ function ValueCard({
 }) {
   const cardBg = theme === "dark" ? "bg-white/5" : "bg-black/5";
   const borderCol = theme === "dark" ? "border-white/10" : "border-black/10";
-  const accentTitle = theme === "dark" ? "text-[#183df2]" : "text-[#183df2]";
+  const accentTitle = "text-[#183df2]";
   const textMuted = theme === "dark" ? "text-white/70" : "text-black/70";
   return (
     <div className={`p-6 ${cardBg} rounded-2xl border ${borderCol}`}>
