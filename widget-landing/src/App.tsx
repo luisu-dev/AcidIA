@@ -132,8 +132,8 @@ function PricingConfigurator() {
           const eligibles = selected.filter(
             (k) => MODULES.find((x) => x.key === k)?.promoEligible
           ).length;
-        const discounted = m.promoEligible && eligibles >= 2;
-        const final = discounted ? Math.round(m.price * 0.5) : m.price;
+          const discounted = m.promoEligible && eligibles >= 2;
+          const final = discounted ? Math.round(m.price * 0.5) : m.price;
           return (
             <button
               key={m.key}
@@ -196,7 +196,7 @@ export default function App() {
   const theme = useTheme(); // "dark" | "light"
 
   // Blend por tema: screen (dark) / multiply (light)
-  const blendMode = theme === "dark" ? "screen" : "multiply";
+  const blendMode: "screen" | "multiply" = theme === "dark" ? "screen" : "multiply";
   const animLow = lowPower; // recorte de animaciones en Android/equipos modestos
 
   // Scroll anim del hero
@@ -207,7 +207,7 @@ export default function App() {
   const scale = useTransform(smooth, [0, 0.5, 1], animLow ? [1, 2.2, 2.4] : [1, 3, 3.2]);
   const maxBlur = animLow ? 0 : 26;
   const blurVal = useTransform(smooth, [0, 0.6, 1], [0, 18, maxBlur]);
-  const blurCss = blurVal.to((v) => (v <= 0 ? "none" : `blur(${Math.round(v)}px)`));
+  const blurCss = useTransform(blurVal, (v) => (v <= 0 ? "none" : `blur(${Math.round(v)}px)`));
 
   // Cross-fade morado/verde que reacciona al tema
   const { purpleOpacity, greenOpacity } = useMemo(() => {
@@ -328,7 +328,7 @@ export default function App() {
               opacity: smokeOpacity,
               x: animLow ? 0 : offsetX,
               y: animLow ? 0 : offsetY,
-              filter: "none", // textura SVG desactivada por defecto; actívala si quieres en desktop
+              filter: "none", // Si quieres textura en desktop: !animLow ? "url(#smoke-texture)" : "none"
             }}
             className="absolute inset-0 m-auto aspect-square w-[60vmin] rounded-full pointer-events-none will-change-transform"
           >
@@ -337,7 +337,7 @@ export default function App() {
               style={{
                 opacity: purpleOpacity,
                 filter: animLow ? "none" : "blur(22px)",
-                mixBlendMode: blendMode as any,
+                mixBlendMode: blendMode,
               }}
               className="absolute inset-0 rounded-full"
             >
@@ -358,7 +358,7 @@ export default function App() {
               style={{
                 opacity: greenOpacity,
                 filter: animLow ? "none" : blurCss,
-                mixBlendMode: blendMode as any,
+                mixBlendMode: blendMode,
               }}
               className="absolute inset-0 rounded-full"
             >
