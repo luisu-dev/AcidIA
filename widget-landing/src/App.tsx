@@ -8,6 +8,11 @@ import {
   useMotionTemplate,
 } from "framer-motion";
 
+// Heurística ligera: Android o 4 hilos o menos → modo lowPower
+const isAndroid = /Android/i.test(navigator.userAgent);
+const lowPower =
+  isAndroid || (navigator.hardwareConcurrency || 8) <= 4 || window.devicePixelRatio >= 3;
+
 /* ================== NAV (aparece tras el hero) ================== */
 function Nav({ active, visible }: { active: string; visible: boolean }) {
   const items = [
@@ -21,9 +26,9 @@ function Nav({ active, visible }: { active: string; visible: boolean }) {
       initial={false}
       animate={{ opacity: visible ? 1 : 0, y: visible ? 0 : -12 }}
       transition={{ duration: 0.25 }}
-      className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 rounded-2xl border border-white/10 bg-black/55 backdrop-blur px-2 py-2 ${
-        visible ? "pointer-events-auto" : "pointer-events-none"
-      }`}
+      className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 rounded-2xl border border-white/10 bg-black/55 ${
+        lowPower ? "" : "backdrop-blur"
+      } px-2 py-2 ${visible ? "pointer-events-auto" : "pointer-events-none"}`}
     >
       <ul className="flex items-center gap-1">
         {items.map(({ id, label }) => {
@@ -144,11 +149,12 @@ export default function App() {
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
   const smooth = useSpring(scrollYProgress, { stiffness: 70, damping: 20, mass: 0.3 });
 
-  // Esfera: escala, blur y HUE (morado #550096 → turquesa #04d9b5 ≈ rotar ~272°)
-  const scale = useTransform(smooth, [0, 0.5, 1], [1, 3, 3.2]);
-  const smokeOpacity = useTransform(smooth, [0, 0.45, 0.6], [1, 0.4, 0]);
-  const blur = useTransform(smooth, [0, 0.6, 1], [6, 18, 26]);
-  const hue = useTransform(smooth, [0, 0.7, 1], [0, 250, 272]); // aterriza en turquesa
+  // Esfera: escala, blur y HUE (morado #550096 → turquesa #04d9b5)
+  const scale = useTransform(smooth, [0, 0.5, 1], lowPower ? [1, 2.2, 2.4] : [1, 3, 3.2]);
+  const smokeOpacity = useTransform(smooth, [0, 0.45, 0.6], [1, 0.5, 0]);
+  const maxBlur = lowPower ? 14 : 26;
+  const blur = useTransform(smooth, [0, 0.6, 1], [6, Math.min(18, maxBlur), maxBlur]);
+  const hue = useTransform(smooth, [0, 0.7, 1], [0, 250, 272]);
   const filter = useMotionTemplate`blur(${blur}px) hue-rotate(${hue}deg)`;
 
   // Navbar visible cuando pasas ~10% del hero
@@ -184,11 +190,12 @@ export default function App() {
       tabQ.removeEventListener("change", update);
     };
   }, []);
-  const strength = isTouch ? 0 : isTablet ? 20 : 40;
+  // Parallax más suave en lowPower
+  const strength = isTouch ? 0 : isTablet ? (lowPower ? 10 : 20) : (lowPower ? 20 : 40);
   const offsetX = coords.x * strength;
   const offsetY = coords.y * strength;
 
-  // Scroll-spy robusto: calcula sección más cercana al 45% de la ventana
+  // Scroll-spy robusto
   const [active, setActive] = useState("inicio");
   useEffect(() => {
     const ids = ["inicio", "quienes-somos", "planes", "contacto"];
@@ -221,25 +228,54 @@ export default function App() {
       {/* ====== INICIO / HERO (solo bola + hint) ====== */}
       <section id="inicio" className="relative h-[140vh] z-0">
         <div className="sticky top-0 h-screen overflow-hidden">
-          {/* textura */}
-          <div
-            className="absolute inset-0 pointer-events-none opacity-25"
-            style={{
-              backgroundImage:
-                "radial-gradient(closest-side, rgba(255,255,255,0.06), transparent 70%), radial-gradient(closest-side, rgba(255,255,255,0.05), transparent 70%)",
-              backgroundSize: "120px 120px, 240px 240px",
-              backgroundPosition: "-20px -20px, 80px 60px",
-            }}
-          />
+          {/* textura (se apaga en lowPower) */}
+          {!lowPower && (
+            <div
+              className="absolute inset-0 pointer-events-none opacity-25"
+              style={{
+                backgroundImage:
+                  "radial-gradient(closest-side, rgba(255,255,255,0.06), transparent 70%), radial-gradient(closest-side, rgba(255,255,255,0.05), transparent 70%)",
+                backgroundSize: "120px 120px, 240px 240px",
+                backgroundPosition: "-20px -20px, 80px 60px",
+              }}
+            />
+          )}
           {/* esfera */}
           <motion.div
             style={{ scale, opacity: smokeOpacity, filter, x: offsetX, y: offsetY }}
-            className="absolute inset-0 m-auto aspect-square w-[60vmin] rounded-full will-change-transform pointer-events-none"
+            className="absolute inset-0 m-auto aspect-square w-[60vmin] rounded-full pointer-events-none will-change-transform"
           >
             <div className="relative w-full h-full">
-              <div className="absolute inset-0 rounded-full mix-blend-screen" style={{ background:"radial-gradient(circle at 50% 55%, #550096 0%, rgba(85,0,150,0.7) 35%, rgba(85,0,150,0.25) 60%, transparent 70%)", filter:"blur(20px)" }} />
-              <div className="absolute inset-0 rounded-full mix-blend-screen" style={{ background:"radial-gradient(circle at 45% 45%, rgba(121,43,189,0.9) 0%, rgba(121,43,189,0.6) 35%, rgba(121,43,189,0.2) 62%, transparent 72%)", filter:"blur(30px)" }} />
-              <div className="absolute inset-0 rounded-full mix-blend-screen" style={{ background:"radial-gradient(circle at 60% 50%, rgba(88,38,173,0.9) 0%, rgba(88,38,173,0.5) 40%, rgba(88,38,173,0.18) 66%, transparent 76%)", filter:"blur(26px)" }} />
+              {/* capa base siempre */}
+              <div
+                className="absolute inset-0 rounded-full mix-blend-screen"
+                style={{
+                  background:
+                    "radial-gradient(circle at 50% 55%, #550096 0%, rgba(85,0,150,0.7) 35%, rgba(85,0,150,0.25) 60%, transparent 70%)",
+                  filter: "blur(20px)",
+                }}
+              />
+              {/* capas extra solo en equipos potentes */}
+              {!lowPower && (
+                <>
+                  <div
+                    className="absolute inset-0 rounded-full mix-blend-screen"
+                    style={{
+                      background:
+                        "radial-gradient(circle at 45% 45%, rgba(121,43,189,0.9) 0%, rgba(121,43,189,0.6) 35%, rgba(121,43,189,0.2) 62%, transparent 72%)",
+                      filter: "blur(30px)",
+                    }}
+                  />
+                  <div
+                    className="absolute inset-0 rounded-full mix-blend-screen"
+                    style={{
+                      background:
+                        "radial-gradient(circle at 60% 50%, rgba(88,38,173,0.9) 0%, rgba(88,38,173,0.5) 40%, rgba(88,38,173,0.18) 66%, transparent 76%)",
+                      filter: "blur(26px)",
+                    }}
+                  />
+                </>
+              )}
             </div>
           </motion.div>
 
@@ -252,14 +288,23 @@ export default function App() {
       {/* ====== QUIÉNES SOMOS ====== */}
       <Section id="quienes-somos" title="¿Quiénes somos?">
         <p className="text-lg text-white/80 leading-relaxed text-center max-w-3xl mx-auto">
-          Somos una empresa mexicana de soluciones de <span className="text-[#04d9b5]">inteligencia artificial</span>,{" "}
-          <span className="text-[#04d9b5]">automatización</span> y <span className="text-[#04d9b5]">ciencia de datos</span>.
-          Nuestro objetivo: poner tecnología de clase mundial al alcance de negocios reales para que tomen mejores decisiones y escalen sin drama.
+          Somos una empresa mexicana de soluciones de{" "}
+          <span className="text-[#04d9b5]">inteligencia artificial</span>,{" "}
+          <span className="text-[#04d9b5]">automatización</span> y{" "}
+          <span className="text-[#04d9b5]">ciencia de datos</span>. Nuestro objetivo:
+          poner tecnología de clase mundial al alcance de negocios reales para que
+          tomen mejores decisiones y escalen sin drama.
         </p>
         <div className="mt-12 grid md:grid-cols-3 gap-6 text-left">
-          <ValueCard title="Innovación">Experimentamos, prototipamos y lanzamos soluciones que mueven la aguja.</ValueCard>
-          <ValueCard title="Oportunidad al talento nuevo">Nos oponemos a las puertas cerradas. Apostamos por mentes frescas con hambre de crecer.</ValueCard>
-          <ValueCard title="Transparencia">Nada de letras chiquitas. Arquitecturas, precios y alcances claros para avanzar parejo.</ValueCard>
+          <ValueCard title="Innovación">
+            Experimentamos, prototipamos y lanzamos soluciones que mueven la aguja.
+          </ValueCard>
+          <ValueCard title="Oportunidad al talento nuevo">
+            Nos oponemos a las puertas cerradas. Apostamos por mentes frescas con hambre de crecer.
+          </ValueCard>
+          <ValueCard title="Transparencia">
+            Nada de letras chiquitas. Arquitecturas, precios y alcances claros para avanzar parejo.
+          </ValueCard>
         </div>
       </Section>
 
@@ -267,19 +312,30 @@ export default function App() {
       <Section id="planes" title="Nuestros planes y precios">
         <p className="text-lg text-center text-white/80 max-w-3xl mx-auto">
           Planes <span className="text-[#04d9b5]">modulares</span> que se adaptan a tu operación.
-          Estamos en <span className="font-semibold text-[#04d9b5]">Founder’s Plan</span>: 50% de descuento comprando 2 o más módulos.
+          Estamos en <span className="font-semibold text-[#04d9b5]">Founder’s Plan</span>:
+          50% de descuento comprando 2 o más módulos.
           <br />
-          <span className="text-sm text-white/50">* El add-on de WhatsApp (integración y mantenimiento) no entra en la promo.</span>
+          <span className="text-sm text-white/50">
+            * El add-on de WhatsApp (integración y mantenimiento) no entra en la promo.
+          </span>
         </p>
 
         <PricingConfigurator />
 
         <h3 className="mt-16 text-2xl font-semibold text-center">Paquetes recomendados</h3>
         <div className="mt-6 grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <PriceCard title="Social Boost" price="3,000">Lu Core + Módulo Meta</PriceCard>
-          <PriceCard title="e-Commerce" price="3,000">Lu Core + Módulo e-Commerce</PriceCard>
-          <PriceCard title="Full Commerce" price="4,500">Lu Core + e-Commerce + Meta</PriceCard>
-          <PriceCard title="Omnin" price="5,500">Todos los módulos</PriceCard>
+          <PriceCard title="Social Boost" price="3,000">
+            Lu Core + Módulo Meta
+          </PriceCard>
+          <PriceCard title="e-Commerce" price="3,000">
+            Lu Core + Módulo e-Commerce
+          </PriceCard>
+          <PriceCard title="Full Commerce" price="4,500">
+            Lu Core + e-Commerce + Meta
+          </PriceCard>
+          <PriceCard title="Omnin" price="5,500">
+            Todos los módulos
+          </PriceCard>
         </div>
 
         <p className="text-sm text-white/50 mt-8 text-center">* Precios en MXN. No incluyen IVA.</p>
@@ -297,17 +353,34 @@ export default function App() {
         <NoteWhatsApp />
       </Section>
 
-      {/* ====== CONTACTO (cop amigable) ====== */}
+      {/* ====== CONTACTO ====== */}
       <Section id="contacto" title="Contacto">
         <p className="text-lg text-white/80 mb-10 text-center">
           Hablemos. Podemos mostrarte una demo, resolver dudas y armar un plan a tu medida.
           Si lo prefieres, déjanos tus datos y te escribimos en menos de 24 horas.
         </p>
         <form className="grid gap-4 max-w-xl mx-auto text-left">
-          <input type="text" placeholder="Tu nombre" className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#04d9b5]" />
-          <input type="email" placeholder="Tu correo" className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#04d9b5]" />
-          <textarea rows={4} placeholder="Cuéntanos de tu proyecto" className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#04d9b5]" />
-          <button type="submit" className="rounded-xl bg-[#04d9b5] text-black px-6 py-3 font-medium shadow hover:brightness-110 transition">Enviar</button>
+          <input
+            type="text"
+            placeholder="Tu nombre"
+            className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#04d9b5]"
+          />
+          <input
+            type="email"
+            placeholder="Tu correo"
+            className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#04d9b5]"
+          />
+          <textarea
+            rows={4}
+            placeholder="Cuéntanos de tu proyecto"
+            className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#04d9b5]"
+          />
+          <button
+            type="submit"
+            className="rounded-xl bg-[#04d9b5] text-black px-6 py-3 font-medium shadow hover:brightness-110 transition"
+          >
+            Enviar
+          </button>
         </form>
       </Section>
     </div>
@@ -337,7 +410,11 @@ function ValueCard({ title, children }: { title: string; children: ReactNode }) 
 
 function PriceCard({ title, price, children }: { title: string; price?: string; children: ReactNode }) {
   return (
-    <div className="rounded-2xl p-6 bg-white/5 border border-white/10 backdrop-blur">
+    <div
+      className={`rounded-2xl p-6 bg-white/5 border border-white/10 ${
+        lowPower ? "" : "backdrop-blur"
+      }`}
+    >
       <div className="flex items-baseline justify-between gap-4">
         <h4 className="text-xl font-semibold text-white/90">{title}</h4>
         {price && <div className="text-[#04d9b5] font-semibold">MXN {price}</div>}
