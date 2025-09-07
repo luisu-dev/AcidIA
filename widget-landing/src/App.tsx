@@ -195,9 +195,9 @@ export default function App() {
   const ref = useRef<HTMLDivElement>(null);
   const theme = useTheme(); // "dark" | "light"
 
-  // Blend por tema: screen (dark) / multiply (light)
-  const blendMode: "screen" | "multiply" = theme === "dark" ? "screen" : "multiply";
-  const animLow = lowPower; // recorte de animaciones en Android/equipos modestos
+  // Blend fijo en "screen" para ambos temas
+  const blendMode: "screen" = "screen";
+  const animLow = lowPower;
 
   // Scroll anim del hero
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
@@ -328,10 +328,12 @@ export default function App() {
               opacity: smokeOpacity,
               x: animLow ? 0 : offsetX,
               y: animLow ? 0 : offsetY,
-              filter: "none", // Si quieres textura en desktop: !animLow ? "url(#smoke-texture)" : "none"
             }}
             className="absolute inset-0 m-auto aspect-square w-[60vmin] rounded-full pointer-events-none will-change-transform"
           >
+            {/* Fondo tenue solo en light para que no se pierda sobre blanco */}
+            {theme === "light" && <div className="absolute inset-0 rounded-full bg-black/20" />}
+
             {/* Capa MORADA */}
             <motion.div
               style={{
@@ -576,4 +578,3 @@ function NoteWhatsApp({ theme }: { theme: "dark" | "light" }) {
     </div>
   );
 }
-
