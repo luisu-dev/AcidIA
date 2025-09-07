@@ -1,16 +1,15 @@
-import { useRef, useState, useEffect } from "react";
-import type { ReactNode } from "react";
+import { useRef, useState, useEffect, ReactNode } from "react";
 import { motion, useScroll, useTransform, useSpring } from "framer-motion";
 
-/* ===== Rendimiento ===== */
+/* ========= Rendimiento (bajar costos en Android/equipos modestos) ========= */
 const isAndroid = /Android/i.test(navigator.userAgent);
 const lowPower =
   isAndroid || (navigator.hardwareConcurrency || 8) <= 4 || window.devicePixelRatio >= 3;
 
-/* ===== Colores ===== */
+/* ========= Colores ========= */
 const PURPLE = "#550096";
 
-/* ===== NAV ===== */
+/* ========= NAV ========= */
 function Nav({ active, visible }: { active: string; visible: boolean }) {
   const items = [
     { id: "inicio", label: "Inicio" },
@@ -26,7 +25,8 @@ function Nav({ active, visible }: { active: string; visible: boolean }) {
       className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 rounded-2xl border border-white/10 bg-black/60 ${
         lowPower ? "" : "backdrop-blur"
       } px-2 py-2 ${visible ? "pointer-events-auto" : "pointer-events-none"}
-         max-w-[92vw] overflow-x-auto no-scrollbar`}
+      max-w-[92vw] overflow-x-auto`}
+      style={{ scrollbarWidth: "none" as any }}
     >
       <ul className="flex items-center gap-2">
         {items.map(({ id, label }) => {
@@ -36,8 +36,9 @@ function Nav({ active, visible }: { active: string; visible: boolean }) {
               <a
                 href={`#${id}`}
                 className={`px-3 py-1.5 rounded-xl transition whitespace-nowrap
-                  text-sm md:text-[15px]
-                  ${isActive ? "bg-[#04d9b5] text-black" : "text-white/85 hover:bg-white/10"}`}
+                text-sm md:text-[15px] ${
+                  isActive ? "bg-[#04d9b5] text-black" : "text-white/85 hover:bg-white/10"
+                }`}
               >
                 {label}
               </a>
@@ -49,7 +50,7 @@ function Nav({ active, visible }: { active: string; visible: boolean }) {
   );
 }
 
-/* ===== UI Reutilizable ===== */
+/* ========= UI Reutilizable ========= */
 function Section({ id, title, children }: { id?: string; title: string; children: ReactNode }) {
   return (
     <section id={id} className="px-6 py-24">
@@ -80,7 +81,7 @@ function PriceCard({ title, price, children }: { title: string; price?: string; 
   );
 }
 
-/* ===== Configurador (modular) ===== */
+/* ========= Configurador modular ========= */
 const MODULES = [
   { key: "core", name: "Lu Core", price: 2000, promoEligible: true, desc: "Burbuja web + IA 24/7" },
   { key: "meta", name: "Módulo Meta", price: 1000, promoEligible: true, desc: "Facebook, Messenger, Instagram (comentarios y DM)" },
@@ -159,26 +160,27 @@ function PricingConfigurator() {
   );
 }
 
-/* ===== APP (oscuro) ===== */
+/* ========= APP (oscuro) ========= */
 export default function App() {
   const ref = useRef<HTMLDivElement>(null);
 
-  // Driver de scroll
+  // Scroll driver
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
   const smooth = useSpring(scrollYProgress, { stiffness: 70, damping: 20, mass: 0.3 });
 
-  // Esfera: escala + blur barato
+  // Escala + blur (barato en Android)
   const scale = useTransform(smooth, [0, 0.5, 1], lowPower ? [1, 2.0, 2.2] : [1, 2.8, 3.0]);
   const blurVal = useTransform(smooth, [0, 0.6, 1], lowPower ? [8, 12, 14] : [10, 18, 22]);
-  const blurCss = useTransform(blurVal, (v) => `blur(${Math.round(v)}px)`);
+  const blurCss = useTransform(blurVal, (v: number) => `blur(${Math.round(v)}px)`);
 
-  // NUEVO: rotación de tono morado → verde (≈ 250–270°)
+  // Morado → verde via hue-rotate (¡sin .to()!)
   const hue = useTransform(smooth, [0, 1], [0, 260]);
+  const hueFilter = useTransform(hue, (h: number) => `hue-rotate(${Math.round(h)}deg)`);
 
   // Desvanecer para revelar contenido
   const smokeOpacity = useTransform(smooth, [0, 0.45, 0.6], [1, 0.6, 0]);
 
-  // Mostrar nav tras el hero
+  // Mostrar nav tras hero
   const navOpacity = useTransform(smooth, [0.08, 0.12], [0, 1]);
   const [navVisible, setNavVisible] = useState(false);
   useEffect(() => {
@@ -186,7 +188,7 @@ export default function App() {
     return () => unsub();
   }, [navOpacity]);
 
-  // Scroll-spy robusto y liviano
+  // Scroll-spy
   const [active, setActive] = useState("inicio");
   useEffect(() => {
     const ids = ["inicio", "quienes-somos", "planes", "contacto"];
@@ -233,7 +235,7 @@ export default function App() {
             className="absolute inset-0 m-auto aspect-square w-[60vmin] rounded-full pointer-events-none will-change-transform"
           >
             <motion.div
-              style={{ filter: hue.to((h) => `hue-rotate(${h}deg)`), mixBlendMode: "screen" as const }}
+              style={{ filter: hueFilter, mixBlendMode: "screen" }}
               className="absolute inset-0 rounded-full"
             >
               <div
@@ -309,10 +311,27 @@ export default function App() {
           Si lo prefieres, déjanos tus datos y te escribimos en menos de 24 horas.
         </p>
         <form className="grid gap-4 max-w-xl mx-auto text-left">
-          <input type="text" placeholder="Tu nombre" className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#04d9b5]" />
-          <input type="email" placeholder="Tu correo" className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#04d9b5]" />
-          <textarea rows={4} placeholder="Cuéntanos de tu proyecto" className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#04d9b5]" />
-          <button type="submit" className="rounded-xl bg-[#04d9b5] text-black px-6 py-3 font-medium shadow hover:brightness-110 transition">Enviar</button>
+          <input
+            type="text"
+            placeholder="Tu nombre"
+            className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#04d9b5]"
+          />
+          <input
+            type="email"
+            placeholder="Tu correo"
+            className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#04d9b5]"
+          />
+          <textarea
+            rows={4}
+            placeholder="Cuéntanos de tu proyecto"
+            className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#04d9b5]"
+          />
+          <button
+            type="submit"
+            className="rounded-xl bg-[#04d9b5] text-black px-6 py-3 font-medium shadow hover:brightness-110 transition"
+          >
+            Enviar
+          </button>
         </form>
       </Section>
     </div>
