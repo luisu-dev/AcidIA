@@ -10,6 +10,7 @@ const lowPower =
 
 /* ========= Colores ========= */
 const PURPLE = "#550096";
+const PINK = "#ff4fd8";
 const GREEN = "#04d9b5";
 
 /* ========= NAV ========= */
@@ -185,8 +186,10 @@ export default function App() {
   // Desvanecer para revelar contenido (fade más tardío)
   const smokeOpacity = useTransform(smooth, [0, 0.6, 0.85], [1, 0.6, 0]);
 
-  // Opacidad para capa verde (fallback sin filtros en lowPower) — completa antes
-  const greenOpacity = useTransform(smooth, [0, 0.35], [0, 1]);
+  // Transición de color: morado → rosa → verde
+  const purpleOpacity = useTransform(smooth, [0, 0.35, 0.7], [1, 0.75, 0.3]);
+  const pinkOpacity = useTransform(smooth, [0.0, 0.18, 0.45, 0.65], [0, 1, 1, 0.25]);
+  const greenOpacity = useTransform(smooth, [0.35, 0.6, 1.0], [0, 0.9, 1]);
 
   // Mostrar nav tras hero
   const navOpacity = useTransform(smooth, [0.08, 0.12], [0, 1]);
@@ -316,15 +319,38 @@ export default function App() {
             }}
             className="absolute inset-0 m-auto aspect-square w-[60vmin] rounded-full pointer-events-none"
           >
-            {/* Crossfade en todos los dispositivos para garantizar el verde */}
+            {/* Crossfade morado → rosa → verde */}
             <>
-              <div
+              <motion.div
                 className="absolute inset-0 rounded-full"
                 style={{
-                  background: `radial-gradient(circle at 50% 55%, ${PURPLE} 0%, rgba(85,0,150,0.55) 32%, rgba(85,0,150,0.18) 58%, transparent 90%)`,
+                  opacity: purpleOpacity,
                   mixBlendMode: lowPower ? "normal" : ("screen" as any),
                 }}
-              />
+              >
+                <div
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    background: `radial-gradient(circle at 50% 55%, ${PURPLE} 0%, rgba(85,0,150,0.55) 32%, rgba(85,0,150,0.18) 58%, transparent 90%)`,
+                  }}
+                />
+              </motion.div>
+
+              <motion.div
+                className="absolute inset-0 rounded-full"
+                style={{
+                  opacity: pinkOpacity,
+                  mixBlendMode: lowPower ? "normal" : ("screen" as any),
+                }}
+              >
+                <div
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    background: `radial-gradient(circle at 50% 55%, ${PINK} 0%, rgba(255,79,216,0.55) 32%, rgba(255,79,216,0.18) 58%, transparent 90%)`,
+                  }}
+                />
+              </motion.div>
+
               <motion.div
                 className="absolute inset-0 rounded-full"
                 style={{
