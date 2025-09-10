@@ -191,8 +191,6 @@ export default function App() {
     lowPower ? [12, 18, 24] : [22, 42, 64]
   );
   const blurCss = useTransform(blurVal, (v: number) => `blur(${Math.round(v)}px)`);
-  // Cortina para ocultar el contenido hasta que la bola se disuelva
-  const curtainOpacity = useTransform(heroSmooth, [0, 0.9, 0.99], [1, 1, 0]);
 
   // Crossfade morado → verde (en todos los dispositivos) para asegurar el verde
 
@@ -407,11 +405,7 @@ export default function App() {
         </div>
       </section>
 
-      {/* Cortina fijada para ocultar el contenido hasta el final del hero */}
-      <motion.div
-        className="fixed inset-0 z-10 pointer-events-none"
-        style={{ opacity: curtainOpacity, backgroundColor: isDark ? "#000" : "#fff" }}
-      />
+      {/* (Cortina movida dentro del HERO) */}
 
       {/* ===== QUIÉNES SOMOS ===== */}
       <Section id="quienes-somos" title="¿Quiénes somos?">
