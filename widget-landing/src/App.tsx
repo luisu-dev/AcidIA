@@ -170,7 +170,7 @@ export default function App() {
 
   // Escala + blur (barato en Android)
   const scale = useTransform(smooth, [0, 0.5, 1], lowPower ? [1, 2.0, 2.2] : [1, 2.8, 3.0]);
-  const blurVal = useTransform(smooth, [0, 0.6, 1], lowPower ? [8, 12, 14] : [10, 18, 22]);
+  const blurVal = useTransform(smooth, [0, 0.6, 1], [10, 18, 22]);
   const blurCss = useTransform(blurVal, (v: number) => `blur(${Math.round(v)}px)`);
 
   // Morado → verde via hue-rotate (¡sin .to()!)
@@ -192,26 +192,35 @@ export default function App() {
   const [active, setActive] = useState("inicio");
   useEffect(() => {
     const ids = ["inicio", "quienes-somos", "planes", "contacto"];
-    const handler = () => {
-      const y = window.innerHeight * 0.45;
-      let best = { id: "inicio", d: Infinity };
-      for (const id of ids) {
-        const el = document.getElementById(id);
-        if (!el) continue;
-        const r = el.getBoundingClientRect();
-        const c = r.top + r.height / 2;
-        const d = Math.abs(c - y);
-        if (d < best.d) best = { id, d };
+    const sections = ids
+      .map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => !!el);
+
+    if (sections.length === 0) return;
+
+    // IntersectionObserver es más barato que medir en cada scroll.
+    let current = "inicio";
+    const io = new IntersectionObserver(
+      (entries) => {
+        // Elegimos la sección con mayor ratio visible dentro de la banda central
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => (b.intersectionRatio || 0) - (a.intersectionRatio || 0));
+        const top = visible[0];
+        if (top?.target?.id && top.target.id !== current) {
+          current = top.target.id;
+          setActive(current);
+        }
+      },
+      {
+        // Banda central del viewport para decidir la sección activa
+        root: null,
+        rootMargin: "-45% 0px -45% 0px",
+        threshold: [0, 0.01, 0.25, 0.5, 0.75, 1],
       }
-      setActive(best.id);
-    };
-    handler();
-    window.addEventListener("scroll", handler, { passive: true });
-    window.addEventListener("resize", handler);
-    return () => {
-      window.removeEventListener("scroll", handler);
-      window.removeEventListener("resize", handler);
-    };
+    );
+    sections.forEach((el) => io.observe(el));
+    return () => io.disconnect();
   }, []);
 
   return (
@@ -231,11 +240,17 @@ export default function App() {
             }}
           />
           <motion.div
-            style={{ scale, opacity: smokeOpacity, filter: blurCss }}
-            className="absolute inset-0 m-auto aspect-square w-[60vmin] rounded-full pointer-events-none will-change-transform"
+            // Evitamos filtros en lowPower (Android) para reducir repaints
+            style={{
+              scale,
+              opacity: smokeOpacity,
+              filter: lowPower ? undefined : blurCss,
+              willChange: lowPower ? "transform" : "transform, filter",
+            }}
+            className="absolute inset-0 m-auto aspect-square w-[60vmin] rounded-full pointer-events-none"
           >
             <motion.div
-              style={{ filter: hueFilter, mixBlendMode: "screen" }}
+              style={{ filter: lowPower ? undefined : hueFilter, mixBlendMode: lowPower ? "normal" : "screen" }}
               className="absolute inset-0 rounded-full"
             >
               <div
