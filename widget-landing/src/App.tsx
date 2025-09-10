@@ -174,26 +174,30 @@ function PricingConfigurator({ isDark }: { isDark: boolean }) {
 /* ========= APP (oscuro) ========= */
 export default function App() {
   const ref = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLElement | null>(null);
 
   // Scroll driver
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
   const smooth = useSpring(scrollYProgress, { stiffness: 70, damping: 20, mass: 0.3 });
+  // Progreso del HERO únicamente
+  const { scrollYProgress: heroProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
+  const heroSmooth = useSpring(heroProgress, { stiffness: 70, damping: 20, mass: 0.3 });
 
   // Escala + blur (smoke). Más blur en equipos capaces.
-  const scale = useTransform(smooth, [0, 0.5, 1], lowPower ? [1, 2.0, 2.2] : [1, 3.0, 3.4]);
+  const scale = useTransform(heroSmooth, [0, 0.5, 1], lowPower ? [1, 2.0, 2.2] : [1, 3.0, 3.4]);
   const blurVal = useTransform(
-    smooth,
+    heroSmooth,
     [0, 0.6, 1],
     lowPower ? [12, 18, 24] : [22, 42, 64]
   );
   const blurCss = useTransform(blurVal, (v: number) => `blur(${Math.round(v)}px)`);
   // Cortina para ocultar el contenido hasta que la bola se disuelva
-  const curtainOpacity = useTransform(smooth, [0, 0.88, 0.98], [1, 1, 0]);
+  const curtainOpacity = useTransform(heroSmooth, [0, 0.9, 0.99], [1, 1, 0]);
 
   // Crossfade morado → verde (en todos los dispositivos) para asegurar el verde
 
   // Desvanecer para revelar contenido (fade más tardío)
-  const smokeOpacity = useTransform(smooth, [0, 0.6, 0.85], [1, 0.6, 0]);
+  const smokeOpacity = useTransform(heroSmooth, [0, 0.6, 0.85], [1, 0.6, 0]);
 
   // Modo de color según preferencia del usuario
   const [isDark, setIsDark] = useState(true);
@@ -215,9 +219,9 @@ export default function App() {
   const greenRange  = isDark ? [0.35, 0.55, 0.7] : [0.0,  0.25, 0.4];
   const greenVals   = isDark ? [0,    0.9,  1]   : [1,    0.3,  0];
 
-  const purpleOpacity = useTransform(smooth, purpleRange, purpleVals);
-  const pinkOpacity   = useTransform(smooth, pinkRange, pinkVals);
-  const greenOpacity  = useTransform(smooth, greenRange, greenVals);
+  const purpleOpacity = useTransform(heroSmooth, purpleRange, purpleVals);
+  const pinkOpacity   = useTransform(heroSmooth, pinkRange, pinkVals);
+  const greenOpacity  = useTransform(heroSmooth, greenRange, greenVals);
 
   // Mostrar nav tras hero
   const navOpacity = useTransform(smooth, [0.08, 0.12], [0, 1]);
@@ -268,7 +272,7 @@ export default function App() {
   const x = useSpring(mvX, { stiffness: 120, damping: 20, mass: 0.2 });
   const y = useSpring(mvY, { stiffness: 120, damping: 20, mass: 0.2 });
   // Mantener centrado verticalmente (sin subir al hacer scroll)
-  const baseY = useTransform(smooth, [0, 1], [0, 0]) as MotionValue<number>;
+  const baseY = useTransform(heroSmooth, [0, 1], [0, 0]) as MotionValue<number>;
   const yMix = useTransform([y, baseY], (vals: number[]) => vals[0] + vals[1]) as MotionValue<number>;
 
   useEffect(() => {
@@ -324,7 +328,7 @@ export default function App() {
       <Nav active={active} visible={navVisible} isDark={isDark} />
 
       {/* ===== HERO: bola con hue-rotate ===== */}
-      <section id="inicio" className="relative h-[130vh] z-0">
+      <section id="inicio" ref={heroRef as any} className="relative h-[130vh] z-0">
         <div className="sticky top-0 h-screen overflow-hidden">
           <div
             className="absolute inset-0 pointer-events-none opacity-20"
