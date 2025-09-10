@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, ReactNode } from "react";
-import { motion, useScroll, useTransform, useSpring } from "framer-motion";
+import { motion, useScroll, useTransform, useSpring, useMotionValue } from "framer-motion";
 
 /* ========= Rendimiento (bajar costos en Android/equipos modestos) ========= */
 const isAndroid = /Android/i.test(navigator.userAgent);
@@ -8,6 +8,7 @@ const lowPower =
 
 /* ========= Colores ========= */
 const PURPLE = "#550096";
+const GREEN = "#04d9b5";
 
 /* ========= NAV ========= */
 function Nav({ active, visible }: { active: string; visible: boolean }) {
@@ -174,11 +175,15 @@ export default function App() {
   const blurCss = useTransform(blurVal, (v: number) => `blur(${Math.round(v)}px)`);
 
   // Morado → verde via hue-rotate (¡sin .to()!)
-  const hue = useTransform(smooth, [0, 1], [0, 260]);
+  // Ajustamos a ~200° para llevar morado → verde con hue-rotate
+  const hue = useTransform(smooth, [0, 1], [0, 200]);
   const hueFilter = useTransform(hue, (h: number) => `hue-rotate(${Math.round(h)}deg)`);
 
   // Desvanecer para revelar contenido
   const smokeOpacity = useTransform(smooth, [0, 0.45, 0.6], [1, 0.6, 0]);
+
+  // Opacidad para capa verde (fallback sin filtros en lowPower)
+  const greenOpacity = useTransform(smooth, [0, 1], [0, 1]);
 
   // Mostrar nav tras hero
   const navOpacity = useTransform(smooth, [0.08, 0.12], [0, 1]);
@@ -223,6 +228,57 @@ export default function App() {
     return () => io.disconnect();
   }, []);
 
+  // ===== Interacción: cursor en desktop, acelerómetro en móvil =====
+  const mvX = useMotionValue(0);
+  const mvY = useMotionValue(0);
+  const x = useSpring(mvX, { stiffness: 120, damping: 20, mass: 0.2 });
+  const y = useSpring(mvY, { stiffness: 120, damping: 20, mass: 0.2 });
+
+  useEffect(() => {
+    const prefersReduced = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReduced) return; // respetar accesibilidad
+
+    let amp = Math.min(40, Math.round(Math.min(window.innerWidth, window.innerHeight) * 0.04));
+    const updateAmp = () => {
+      amp = Math.min(40, Math.round(Math.min(window.innerWidth, window.innerHeight) * 0.04));
+    };
+    window.addEventListener("resize", updateAmp);
+
+    // Cursor (desktop)
+    const onPointer = (e: PointerEvent) => {
+      const cx = window.innerWidth / 2;
+      const cy = window.innerHeight / 2;
+      const nx = Math.max(-1, Math.min(1, (e.clientX - cx) / cx));
+      const ny = Math.max(-1, Math.min(1, (e.clientY - cy) / cy));
+      mvX.set(nx * amp);
+      mvY.set(ny * amp);
+    };
+
+    // Acelerómetro (móvil)
+    const onOrient = (e: DeviceOrientationEvent) => {
+      const gamma = (e.gamma ?? 0); // izq-der (-90..90)
+      const beta = (e.beta ?? 0); // frente-atrás (-180..180)
+      const nx = Math.max(-1, Math.min(1, gamma / 30));
+      const ny = Math.max(-1, Math.min(1, beta / 30));
+      mvX.set(nx * amp);
+      mvY.set(ny * amp);
+    };
+
+    // Elegimos input según capacidades
+    const isTouch = matchMedia("(pointer: coarse)").matches;
+    if (isTouch) {
+      window.addEventListener("deviceorientation", onOrient);
+    } else {
+      window.addEventListener("pointermove", onPointer);
+    }
+
+    return () => {
+      window.removeEventListener("resize", updateAmp);
+      window.removeEventListener("pointermove", onPointer);
+      window.removeEventListener("deviceorientation", onOrient);
+    };
+  }, [mvX, mvY]);
+
   return (
     <div ref={ref} className="relative min-h-[260vh] bg-black text-white">
       <Nav active={active} visible={navVisible} />
@@ -240,8 +296,10 @@ export default function App() {
             }}
           />
           <motion.div
-            // Evitamos filtros en lowPower (Android) para reducir repaints
+            // Bola central: se mueve con x/y y escala con scroll.
             style={{
+              x,
+              y,
               scale,
               opacity: smokeOpacity,
               filter: lowPower ? undefined : blurCss,
@@ -249,17 +307,45 @@ export default function App() {
             }}
             className="absolute inset-0 m-auto aspect-square w-[60vmin] rounded-full pointer-events-none"
           >
-            <motion.div
-              style={{ filter: lowPower ? undefined : hueFilter, mixBlendMode: lowPower ? "normal" : "screen" }}
-              className="absolute inset-0 rounded-full"
-            >
-              <div
+            {/* Alta potencia: una sola capa morada con hue-rotate */}
+            {!lowPower && (
+              <motion.div
+                style={{ filter: hueFilter, mixBlendMode: "screen" }}
                 className="absolute inset-0 rounded-full"
-                style={{
-                  background: `radial-gradient(circle at 50% 55%, ${PURPLE} 0%, rgba(85,0,150,0.72) 36%, rgba(85,0,150,0.28) 62%, transparent 72%)`,
-                }}
-              />
-            </motion.div>
+              >
+                <div
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    background: `radial-gradient(circle at 50% 55%, ${PURPLE} 0%, rgba(85,0,150,0.72) 36%, rgba(85,0,150,0.28) 62%, transparent 72%)`,
+                  }}
+                />
+              </motion.div>
+            )}
+
+            {/* Low-power: crossfade entre morado → verde sin filtros */}
+            {lowPower && (
+              <>
+                <div
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    background: `radial-gradient(circle at 50% 55%, ${PURPLE} 0%, rgba(85,0,150,0.72) 36%, rgba(85,0,150,0.28) 62%, transparent 72%)`,
+                  }}
+                />
+                <motion.div
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    opacity: greenOpacity,
+                  }}
+                >
+                  <div
+                    className="absolute inset-0 rounded-full"
+                    style={{
+                      background: `radial-gradient(circle at 50% 55%, ${GREEN} 0%, rgba(4,217,181,0.72) 36%, rgba(4,217,181,0.28) 62%, transparent 72%)`,
+                    }}
+                  />
+                </motion.div>
+              </>
+            )}
           </motion.div>
 
           <div className="absolute inset-x-0 bottom-10 text-center text-xs tracking-widest uppercase opacity-60">
