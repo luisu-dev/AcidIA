@@ -413,14 +413,14 @@ export default function App() {
           {/* Overlay de narrativa (por encima de la bola) */}
           <motion.div
             className="absolute inset-0 pointer-events-none grid place-items-center"
-            style={{ backgroundColor: "#000", opacity: overlayOpacity, zIndex: 60 }}
+            style={{ backgroundColor: isDark ? "#000" : "#fff", opacity: overlayOpacity, zIndex: 60 }}
           >
             <motion.h1
               style={{ opacity: titleOpacity, scale: titleScale }}
-              className="px-6 text-center text-4xl md:text-6xl font-extrabold tracking-tight w-full"
+              className="px-6 text-center text-4xl md:text-8xl lg:text-9xl font-extrabold tracking-tight w-full"
             >
               <span style={{ color: PINK }}>IA</span>
-              <span className="mx-2 text-white">para tu</span>
+              <span className={`mx-2 ${isDark ? "text-white" : "text-black"}`}>para tu</span>
               <span style={{ color: ORANGE }}>negocio</span>
             </motion.h1>
           </motion.div>
