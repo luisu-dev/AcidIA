@@ -1,4 +1,5 @@
-import { useRef, useState, useEffect, ReactNode } from "react";
+import { useRef, useState, useEffect } from "react";
+import type { ReactNode } from "react";
 import { motion, useScroll, useTransform, useSpring, useMotionValue } from "framer-motion";
 
 /* ========= Rendimiento (bajar costos en Android/equipos modestos) ========= */
