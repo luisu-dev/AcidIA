@@ -12,6 +12,7 @@ const lowPower =
 const PURPLE = "#550096";
 const PINK = "#ff4fd8";
 const GREEN = "#04d9b5";
+const ORANGE = "#ff8a00"; // opcional
 
 /* ========= NAV ========= */
 function Nav({ active, visible, isDark }: { active: string; visible: boolean; isDark: boolean }) {
@@ -224,9 +225,16 @@ export default function App() {
   const purpleOpacity = useTransform(heroSmooth, purpleRange, purpleVals);
   const pinkOpacity   = useTransform(heroSmooth, pinkRange, pinkVals);
   const greenOpacity  = useTransform(heroSmooth, greenRange, greenVals);
+  // Secuencia final: fade a negro → título → fade out → mostrar contenido
+  // Ajuste: que aparezca en el "medio" del HERO
+  // Antes iniciaba muy tarde (~0.65). Adelantamos el rango para que
+  // el título sea visible alrededor del 50–80% del scroll del HERO.
+  const overlayOpacity = useTransform(heroSmooth, [0.42, 0.5, 0.86, 0.94], [0, 1, 1, 0]);
+  const titleOpacity   = useTransform(heroSmooth, [0.5, 0.56, 0.8, 0.86],   [0, 1, 1, 0]);
+  const titleScale     = useTransform(heroSmooth, [0.5, 0.86],               [0.98, 1.06]);
 
-  // Mostrar nav tras hero
-  const navOpacity = useTransform(smooth, [0.08, 0.12], [0, 1]);
+  // Mostrar nav solo al final del hero
+  const navOpacity = useTransform(heroSmooth, [0.98, 1], [0, 1]);
   const [navVisible, setNavVisible] = useState(false);
   useEffect(() => {
     const unsub = navOpacity.on("change", (v) => setNavVisible(v > 0.5));
@@ -401,6 +409,21 @@ export default function App() {
                 />
               </motion.div>
             </>
+          </motion.div>
+
+          {/* Overlay de narrativa (por encima de la bola) */}
+          <motion.div
+            className="absolute inset-0 pointer-events-none grid place-items-center"
+            style={{ backgroundColor: "#000", opacity: overlayOpacity, zIndex: 60 }}
+          >
+            <motion.h1
+              style={{ opacity: titleOpacity, scale: titleScale }}
+              className="px-6 text-center text-4xl md:text-6xl font-extrabold tracking-tight w-full"
+            >
+              <span style={{ color: PINK }}>IA</span>
+              <span className="mx-2 text-white">para tu</span>
+              <span style={{ color: ORANGE }}>negocio</span>
+            </motion.h1>
           </motion.div>
 
           <div className="absolute inset-x-0 bottom-10 text-center text-xs tracking-widest uppercase opacity-60">
