@@ -171,20 +171,23 @@ export default function App() {
   const smooth = useSpring(scrollYProgress, { stiffness: 70, damping: 20, mass: 0.3 });
 
   // Escala + blur (barato en Android)
-  const scale = useTransform(smooth, [0, 0.5, 1], lowPower ? [1, 2.0, 2.2] : [1, 2.8, 3.0]);
-  const blurVal = useTransform(smooth, [0, 0.6, 1], [10, 18, 22]);
+  const scale = useTransform(smooth, [0, 0.5, 1], lowPower ? [1, 2.0, 2.2] : [1, 2.9, 3.2]);
+  const blurVal = useTransform(
+    smooth,
+    [0, 0.6, 1],
+    lowPower ? [8, 14, 18] : [16, 26, 34]
+  );
   const blurCss = useTransform(blurVal, (v: number) => `blur(${Math.round(v)}px)`);
 
-  // Morado → verde via hue-rotate (¡sin .to()!)
-  // Ajustamos a ~200° para llevar morado → verde con hue-rotate
-  const hue = useTransform(smooth, [0, 1], [0, 200]);
+  // Morado → verde via hue-rotate (termina temprano para que se vea el verde)
+  const hue = useTransform(smooth, [0, 0.35], [0, 230]);
   const hueFilter = useTransform(hue, (h: number) => `hue-rotate(${Math.round(h)}deg)`);
 
-  // Desvanecer para revelar contenido
-  const smokeOpacity = useTransform(smooth, [0, 0.45, 0.6], [1, 0.6, 0]);
+  // Desvanecer para revelar contenido (fade más tardío)
+  const smokeOpacity = useTransform(smooth, [0, 0.6, 0.85], [1, 0.6, 0]);
 
-  // Opacidad para capa verde (fallback sin filtros en lowPower)
-  const greenOpacity = useTransform(smooth, [0, 1], [0, 1]);
+  // Opacidad para capa verde (fallback sin filtros en lowPower) — completa antes
+  const greenOpacity = useTransform(smooth, [0, 0.35], [0, 1]);
 
   // Mostrar nav tras hero
   const navOpacity = useTransform(smooth, [0.08, 0.12], [0, 1]);
@@ -239,9 +242,11 @@ export default function App() {
     const prefersReduced = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (prefersReduced) return; // respetar accesibilidad
 
-    let amp = Math.min(40, Math.round(Math.min(window.innerWidth, window.innerHeight) * 0.04));
+    let amp = Math.round(Math.min(window.innerWidth, window.innerHeight) * (lowPower ? 0.05 : 0.08));
+    amp = Math.min(amp, lowPower ? 48 : 80);
     const updateAmp = () => {
-      amp = Math.min(40, Math.round(Math.min(window.innerWidth, window.innerHeight) * 0.04));
+      amp = Math.round(Math.min(window.innerWidth, window.innerHeight) * (lowPower ? 0.05 : 0.08));
+      amp = Math.min(amp, lowPower ? 48 : 80);
     };
     window.addEventListener("resize", updateAmp);
 
@@ -259,8 +264,9 @@ export default function App() {
     const onOrient = (e: DeviceOrientationEvent) => {
       const gamma = (e.gamma ?? 0); // izq-der (-90..90)
       const beta = (e.beta ?? 0); // frente-atrás (-180..180)
-      const nx = Math.max(-1, Math.min(1, gamma / 30));
-      const ny = Math.max(-1, Math.min(1, beta / 30));
+      const sens = lowPower ? 28 : 18; // menor divisor = más sensibilidad
+      const nx = Math.max(-1, Math.min(1, gamma / sens));
+      const ny = Math.max(-1, Math.min(1, beta / sens));
       mvX.set(nx * amp);
       mvY.set(ny * amp);
     };
@@ -317,7 +323,7 @@ export default function App() {
                 <div
                   className="absolute inset-0 rounded-full"
                   style={{
-                    background: `radial-gradient(circle at 50% 55%, ${PURPLE} 0%, rgba(85,0,150,0.72) 36%, rgba(85,0,150,0.28) 62%, transparent 72%)`,
+                    background: `radial-gradient(circle at 50% 55%, ${PURPLE} 0%, rgba(85,0,150,0.6) 34%, rgba(85,0,150,0.22) 60%, transparent 86%)`,
                   }}
                 />
               </motion.div>
@@ -329,7 +335,7 @@ export default function App() {
                 <div
                   className="absolute inset-0 rounded-full"
                   style={{
-                    background: `radial-gradient(circle at 50% 55%, ${PURPLE} 0%, rgba(85,0,150,0.72) 36%, rgba(85,0,150,0.28) 62%, transparent 72%)`,
+                    background: `radial-gradient(circle at 50% 55%, ${PURPLE} 0%, rgba(85,0,150,0.6) 34%, rgba(85,0,150,0.22) 60%, transparent 86%)`,
                   }}
                 />
                 <motion.div
@@ -341,7 +347,7 @@ export default function App() {
                   <div
                     className="absolute inset-0 rounded-full"
                     style={{
-                      background: `radial-gradient(circle at 50% 55%, ${GREEN} 0%, rgba(4,217,181,0.72) 36%, rgba(4,217,181,0.28) 62%, transparent 72%)`,
+                      background: `radial-gradient(circle at 50% 55%, ${GREEN} 0%, rgba(4,217,181,0.6) 34%, rgba(4,217,181,0.22) 60%, transparent 86%)`,
                     }}
                   />
                 </motion.div>
