@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import { motion, useScroll, useTransform, useSpring, useMotionValue } from "framer-motion";
+import type { MotionValue } from "framer-motion";
 
 /* ========= Rendimiento (bajar costos en Android/equipos modestos) ========= */
 const isAndroid = /Android/i.test(navigator.userAgent);
@@ -236,8 +237,8 @@ export default function App() {
   const x = useSpring(mvX, { stiffness: 120, damping: 20, mass: 0.2 });
   const y = useSpring(mvY, { stiffness: 120, damping: 20, mass: 0.2 });
   // Levantar la bola hacia arriba mientras se esfuma (efecto hacia el frente)
-  const baseY = useTransform(smooth, [0, 1], [0, -80]);
-  const yMix = useTransform([y, baseY], ([yy, by]) => yy + by);
+  const baseY = useTransform(smooth, [0, 1], [0, -80]) as MotionValue<number>;
+  const yMix = useTransform([y, baseY], (vals: number[]) => vals[0] + vals[1]) as MotionValue<number>;
 
   useEffect(() => {
     const prefersReduced = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
