@@ -186,10 +186,29 @@ export default function App() {
   // Desvanecer para revelar contenido (fade más tardío)
   const smokeOpacity = useTransform(smooth, [0, 0.6, 0.85], [1, 0.6, 0]);
 
-  // Transición de color: morado → rosa → verde
-  const purpleOpacity = useTransform(smooth, [0, 0.35, 0.7], [1, 0.75, 0.3]);
-  const pinkOpacity = useTransform(smooth, [0.0, 0.18, 0.45, 0.65], [0, 1, 1, 0.25]);
-  const greenOpacity = useTransform(smooth, [0.35, 0.6, 1.0], [0, 0.9, 1]);
+  // Modo de color según preferencia del usuario
+  const [isDark, setIsDark] = useState(true);
+  useEffect(() => {
+    try {
+      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+      const update = () => setIsDark(mq.matches);
+      update();
+      mq.addEventListener('change', update);
+      return () => mq.removeEventListener('change', update);
+    } catch {}
+  }, []);
+
+  // Transición morado → rosa → verde en dark; inversa en light
+  const purpleRange = isDark ? [0.0, 0.25, 0.4] : [0.35, 0.55, 0.7];
+  const purpleVals  = isDark ? [1,    0.3,  0]   : [0,    0.9,  1];
+  const pinkRange   =           [0.15, 0.35, 0.5];
+  const pinkVals    =           [0,    1,    0];
+  const greenRange  = isDark ? [0.35, 0.55, 0.7] : [0.0,  0.25, 0.4];
+  const greenVals   = isDark ? [0,    0.9,  1]   : [1,    0.3,  0];
+
+  const purpleOpacity = useTransform(smooth, purpleRange, purpleVals);
+  const pinkOpacity   = useTransform(smooth, pinkRange, pinkVals);
+  const greenOpacity  = useTransform(smooth, greenRange, greenVals);
 
   // Mostrar nav tras hero
   const navOpacity = useTransform(smooth, [0.08, 0.12], [0, 1]);
@@ -239,8 +258,8 @@ export default function App() {
   const mvY = useMotionValue(0);
   const x = useSpring(mvX, { stiffness: 120, damping: 20, mass: 0.2 });
   const y = useSpring(mvY, { stiffness: 120, damping: 20, mass: 0.2 });
-  // Levantar la bola hacia arriba mientras se esfuma (efecto hacia el frente)
-  const baseY = useTransform(smooth, [0, 1], [0, -80]) as MotionValue<number>;
+  // Mantener centrado verticalmente (sin subir al hacer scroll)
+  const baseY = useTransform(smooth, [0, 1], [0, 0]) as MotionValue<number>;
   const yMix = useTransform([y, baseY], (vals: number[]) => vals[0] + vals[1]) as MotionValue<number>;
 
   useEffect(() => {
