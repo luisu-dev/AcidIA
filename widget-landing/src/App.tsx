@@ -329,7 +329,7 @@ export default function App() {
 
       {/* ===== HERO: bola con hue-rotate ===== */}
       <section id="inicio" ref={heroRef as any} className="relative h-[130vh] z-0">
-        <div className="sticky top-0 h-screen overflow-hidden z-30">
+        <div className="sticky top-0 h-screen overflow-hidden z-40">
           <div
             className="absolute inset-0 pointer-events-none opacity-20"
             style={{
@@ -350,7 +350,7 @@ export default function App() {
               filter: blurCss,
               willChange: "transform, filter",
             }}
-            className="absolute inset-0 m-auto aspect-square w-[60vmin] rounded-full pointer-events-none z-30"
+            className="absolute inset-0 m-auto aspect-square w-[60vmin] rounded-full pointer-events-none z-50"
           >
             {/* Crossfade morado → rosa → verde */}
             <>
@@ -409,7 +409,7 @@ export default function App() {
 
       {/* Cortina fijada para ocultar el contenido hasta el final del hero */}
       <motion.div
-        className="fixed inset-0 z-20 pointer-events-none"
+        className="fixed inset-0 z-10 pointer-events-none"
         style={{ opacity: curtainOpacity, backgroundColor: isDark ? "#000" : "#fff" }}
       />
 
