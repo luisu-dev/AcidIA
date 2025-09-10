@@ -177,9 +177,8 @@ export default function App() {
   const ref = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLElement | null>(null);
 
-  // Scroll driver
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
-  const smooth = useSpring(scrollYProgress, { stiffness: 70, damping: 20, mass: 0.3 });
+  // Scroll driver (global) — ya no usado directamente
+  // Eliminado para evitar warning TS6133 (noUnusedLocals)
   // Progreso del HERO únicamente
   const { scrollYProgress: heroProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
   const heroSmooth = useSpring(heroProgress, { stiffness: 70, damping: 20, mass: 0.3 });
