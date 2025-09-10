@@ -329,7 +329,7 @@ export default function App() {
 
       {/* ===== HERO: bola con hue-rotate ===== */}
       <section id="inicio" ref={heroRef as any} className="relative h-[130vh] z-0">
-        <div className="sticky top-0 h-screen overflow-hidden">
+        <div className="sticky top-0 h-screen overflow-hidden z-30">
           <div
             className="absolute inset-0 pointer-events-none opacity-20"
             style={{
