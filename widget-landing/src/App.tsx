@@ -170,18 +170,16 @@ export default function App() {
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
   const smooth = useSpring(scrollYProgress, { stiffness: 70, damping: 20, mass: 0.3 });
 
-  // Escala + blur (barato en Android)
-  const scale = useTransform(smooth, [0, 0.5, 1], lowPower ? [1, 2.0, 2.2] : [1, 2.9, 3.2]);
+  // Escala + blur (smoke). Más blur en equipos capaces.
+  const scale = useTransform(smooth, [0, 0.5, 1], lowPower ? [1, 2.0, 2.2] : [1, 3.0, 3.4]);
   const blurVal = useTransform(
     smooth,
     [0, 0.6, 1],
-    lowPower ? [8, 14, 18] : [16, 26, 34]
+    lowPower ? [12, 18, 24] : [22, 42, 64]
   );
   const blurCss = useTransform(blurVal, (v: number) => `blur(${Math.round(v)}px)`);
 
-  // Morado → verde via hue-rotate (termina temprano para que se vea el verde)
-  const hue = useTransform(smooth, [0, 0.35], [0, 230]);
-  const hueFilter = useTransform(hue, (h: number) => `hue-rotate(${Math.round(h)}deg)`);
+  // Crossfade morado → verde (en todos los dispositivos) para asegurar el verde
 
   // Desvanecer para revelar contenido (fade más tardío)
   const smokeOpacity = useTransform(smooth, [0, 0.6, 0.85], [1, 0.6, 0]);
@@ -237,6 +235,9 @@ export default function App() {
   const mvY = useMotionValue(0);
   const x = useSpring(mvX, { stiffness: 120, damping: 20, mass: 0.2 });
   const y = useSpring(mvY, { stiffness: 120, damping: 20, mass: 0.2 });
+  // Levantar la bola hacia arriba mientras se esfuma (efecto hacia el frente)
+  const baseY = useTransform(smooth, [0, 1], [0, -80]);
+  const yMix = useTransform([y, baseY], ([yy, by]) => yy + by);
 
   useEffect(() => {
     const prefersReduced = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -306,53 +307,38 @@ export default function App() {
             // Bola central: se mueve con x/y y escala con scroll.
             style={{
               x,
-              y,
+              y: yMix as any,
               scale,
               opacity: smokeOpacity,
-              filter: lowPower ? undefined : blurCss,
-              willChange: lowPower ? "transform" : "transform, filter",
+              filter: blurCss,
+              willChange: "transform, filter",
             }}
             className="absolute inset-0 m-auto aspect-square w-[60vmin] rounded-full pointer-events-none"
           >
-            {/* Alta potencia: una sola capa morada con hue-rotate */}
-            {!lowPower && (
-              <motion.div
-                style={{ filter: hueFilter, mixBlendMode: "screen" }}
+            {/* Crossfade en todos los dispositivos para garantizar el verde */}
+            <>
+              <div
                 className="absolute inset-0 rounded-full"
+                style={{
+                  background: `radial-gradient(circle at 50% 55%, ${PURPLE} 0%, rgba(85,0,150,0.55) 32%, rgba(85,0,150,0.18) 58%, transparent 90%)`,
+                  mixBlendMode: lowPower ? "normal" : ("screen" as any),
+                }}
+              />
+              <motion.div
+                className="absolute inset-0 rounded-full"
+                style={{
+                  opacity: greenOpacity,
+                  mixBlendMode: lowPower ? "normal" : ("screen" as any),
+                }}
               >
                 <div
                   className="absolute inset-0 rounded-full"
                   style={{
-                    background: `radial-gradient(circle at 50% 55%, ${PURPLE} 0%, rgba(85,0,150,0.6) 34%, rgba(85,0,150,0.22) 60%, transparent 86%)`,
+                    background: `radial-gradient(circle at 50% 55%, ${GREEN} 0%, rgba(4,217,181,0.55) 32%, rgba(4,217,181,0.18) 58%, transparent 90%)`,
                   }}
                 />
               </motion.div>
-            )}
-
-            {/* Low-power: crossfade entre morado → verde sin filtros */}
-            {lowPower && (
-              <>
-                <div
-                  className="absolute inset-0 rounded-full"
-                  style={{
-                    background: `radial-gradient(circle at 50% 55%, ${PURPLE} 0%, rgba(85,0,150,0.6) 34%, rgba(85,0,150,0.22) 60%, transparent 86%)`,
-                  }}
-                />
-                <motion.div
-                  className="absolute inset-0 rounded-full"
-                  style={{
-                    opacity: greenOpacity,
-                  }}
-                >
-                  <div
-                    className="absolute inset-0 rounded-full"
-                    style={{
-                      background: `radial-gradient(circle at 50% 55%, ${GREEN} 0%, rgba(4,217,181,0.6) 34%, rgba(4,217,181,0.22) 60%, transparent 86%)`,
-                    }}
-                  />
-                </motion.div>
-              </>
-            )}
+            </>
           </motion.div>
 
           <div className="absolute inset-x-0 bottom-10 text-center text-xs tracking-widest uppercase opacity-60">
