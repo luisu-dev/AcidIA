@@ -184,18 +184,22 @@ export default function App() {
   const heroSmooth = useSpring(heroProgress, { stiffness: 70, damping: 20, mass: 0.3 });
 
   // Escala + blur (smoke). Más blur en equipos capaces.
-  const scale = useTransform(heroSmooth, [0, 0.5, 1], lowPower ? [1, 2.0, 2.2] : [1, 3.0, 3.4]);
-  const blurVal = useTransform(
+  const scale = useTransform(
     heroSmooth,
     [0, 0.6, 1],
-    lowPower ? [12, 18, 24] : [22, 42, 64]
+    lowPower ? [1, 2.4, 3.2] : [1, 3.8, 5.0]
+  );
+  const blurVal = useTransform(
+    heroSmooth,
+    [0, 0.7, 1],
+    lowPower ? [14, 22, 30] : [26, 56, 84]
   );
   const blurCss = useTransform(blurVal, (v: number) => `blur(${Math.round(v)}px)`);
 
   // Crossfade morado → verde (en todos los dispositivos) para asegurar el verde
 
   // Desvanecer para revelar contenido (fade más tardío)
-  const smokeOpacity = useTransform(heroSmooth, [0, 0.6, 0.85], [1, 0.6, 0]);
+  const smokeOpacity = useTransform(heroSmooth, [0, 0.85, 1.0], [1, 0.75, 0]);
 
   // Modo de color según preferencia del usuario
   const [isDark, setIsDark] = useState(true);
@@ -210,12 +214,12 @@ export default function App() {
   }, []);
 
   // Transición morado → rosa → verde en dark; inversa en light
-  const purpleRange = isDark ? [0.0, 0.25, 0.4] : [0.35, 0.55, 0.7];
-  const purpleVals  = isDark ? [1,    0.3,  0]   : [0,    0.9,  1];
-  const pinkRange   =           [0.15, 0.35, 0.5];
-  const pinkVals    =           [0,    1,    0];
-  const greenRange  = isDark ? [0.35, 0.55, 0.7] : [0.0,  0.25, 0.4];
-  const greenVals   = isDark ? [0,    0.9,  1]   : [1,    0.3,  0];
+  const purpleRange = isDark ? [0.0, 0.5, 0.75] : [0.6, 0.85, 1.0];
+  const purpleVals  = isDark ? [1,   0.3,  0]    : [0,   0.9,  1];
+  const pinkRange   =          [0.35, 0.6, 0.85];
+  const pinkVals    =          [0,    1,   0];
+  const greenRange  = isDark ? [0.6, 0.85, 1.0]  : [0.0, 0.5, 0.75];
+  const greenVals   = isDark ? [0,   0.9,  1]    : [1,   0.3,  0];
 
   const purpleOpacity = useTransform(heroSmooth, purpleRange, purpleVals);
   const pinkOpacity   = useTransform(heroSmooth, pinkRange, pinkVals);
@@ -326,7 +330,7 @@ export default function App() {
       <Nav active={active} visible={navVisible} isDark={isDark} />
 
       {/* ===== HERO: bola con hue-rotate ===== */}
-      <section id="inicio" ref={heroRef as any} className="relative h-[130vh] z-0">
+      <section id="inicio" ref={heroRef as any} className="relative h-[200vh] z-0">
         <div className="sticky top-0 h-screen overflow-hidden z-40">
           <div
             className="absolute inset-0 pointer-events-none opacity-20"
