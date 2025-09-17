@@ -1,18 +1,20 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
 import type { ReactNode } from "react";
 import { motion, useScroll, useTransform, useSpring, useMotionValue } from "framer-motion";
 import type { MotionValue } from "framer-motion";
+
+import starterImg from "../images/starter.png";
+import metaImg from "../images/meta.png";
+import ecommerceImg from "../images/ecommerce.png";
+import whatsappImg from "../images/whatsaddon.png";
+import webCoreImg from "../images/web1.png";
+import webEcommerceImg from "../images/web2.png";
+import { sendContact } from "./lib/contact";
 
 /* ========= Rendimiento (bajar costos en Android/equipos modestos) ========= */
 const isAndroid = /Android/i.test(navigator.userAgent);
 const lowPower =
   isAndroid || (navigator.hardwareConcurrency || 8) <= 4 || window.devicePixelRatio >= 3;
-
-/* ========= Colores ========= */
-const PURPLE = "#550096";
-const PINK = "#ff4fd8";
-const GREEN = "#04d9b5";
-const ORANGE = "#ff8a00"; // opcional
 
 /* ========= NAV ========= */
 function Nav({ active, visible, isDark }: { active: string; visible: boolean; isDark: boolean }) {
@@ -59,9 +61,19 @@ function Nav({ active, visible, isDark }: { active: string; visible: boolean; is
 }
 
 /* ========= UI Reutilizable ========= */
-function Section({ id, title, children }: { id?: string; title: string; children: ReactNode }) {
+function Section({
+  id,
+  title,
+  children,
+  className = "",
+}: {
+  id?: string;
+  title: string;
+  children: ReactNode;
+  className?: string;
+}) {
   return (
-    <section id={id} className="px-6 py-24">
+    <section id={id} className={`px-6 py-20 ${className}`}>
       <div className="mx-auto max-w-6xl">
         <h2 className="text-4xl md:text-5xl font-bold mb-6 text-center">{title}</h2>
         <div>{children}</div>
@@ -77,96 +89,421 @@ function ValueCard({ title, children, isDark }: { title: string; children: React
     </div>
   );
 }
-function PriceCard({ title, price, children, isDark }: { title: string; price?: string; children: ReactNode; isDark: boolean }) {
+type PlanDetailSection = {
+  title: string;
+  body?: string;
+  items?: string[];
+};
+
+type PlanCardData = {
+  key: string;
+  title: string;
+  image: string;
+  features: string[];
+  price?: string;
+  sections: PlanDetailSection[];
+};
+
+const PLAN_CARDS: PlanCardData[] = [
+  {
+    key: "starter",
+    title: "Plan Starter (chat web)",
+    image: starterImg,
+    features: [
+      "Widget de chat web embebible",
+      "FAQs con tono de marca",
+      "Leads calificados con 1 flujo preconfigurado",
+      "Redirecciones a WhatsApp o URLs",
+    ],
+    price: "$1,500 MXN/mes (+IVA)",
+    sections: [
+      {
+        title: "Características destacadas",
+        items: [
+          "Widget de chat web personalizable",
+          "FAQs ajustadas al tono de la marca",
+          "Flujos automatizados para calificar leads",
+          "Redirecciones inteligentes a WhatsApp o páginas clave",
+        ],
+      },
+      {
+        title: "Detalles",
+        body: "Plantillas de flujo sugeridas (elige una y la afinamos a tu operación):",
+        items: [
+          "Calificar lead: capturamos datos de contacto, presupuesto y prioridad para tu equipo comercial",
+          "Cotización básica: recogemos alcance, integraciones y urgencia del proyecto",
+          "Soporte pre-venta: identificamos el motivo, producto de interés y datos de contacto",
+          "Límites de uso mensuales: 1M tokens de entrada + 1M tokens de salida",
+          "Métricas: aperturas, primera interacción, clics a WhatsApp y export de leads a CSV",
+        ],
+      },
+      {
+        title: "Qué incluye",
+        items: [
+          "Instalación del widget (snippet + guía)",
+          "1 flujo preconfigurado a elegir",
+          "Ajuste básico de FAQs y tono",
+        ],
+      },
+      {
+        title: "Qué se entrega",
+        items: [
+          "Snippet para insertar en tu sitio",
+          "Acceso a export de leads/eventos",
+          "Notificaciones por correo y WhatsApp",
+        ],
+      },
+      {
+        title: "Requisitos",
+        items: [
+          "Sitio web donde incrustar el widget",
+          "FAQs base y mensajes legales/políticas",
+        ],
+      },
+    ],
+  },
+  {
+    key: "addon-whatsapp",
+    title: "Add-on WhatsApp (canal conversacional)",
+    image: whatsappImg,
+    features: [
+      "Mis respuestas del chat web en WhatsApp",
+      "Leads calificados y links de pago",
+      "Detección de intención de compra",
+    ],
+    price: "$500 MXN/mes (+IVA)",
+    sections: [
+      {
+        title: "Características destacadas",
+        items: [
+          "Replica el cerebro del chat web en WhatsApp",
+          "FAQs + calificación de leads + envío de links de pago",
+          "Detecta intención de compra para nutrir al equipo comercial",
+        ],
+      },
+      {
+        title: "Detalles",
+        body: "Compatible con plantillas proactivas (según políticas de Meta/Twilio/BSP).",
+      },
+      {
+        title: "Qué incluye",
+        items: [
+          "Conexión al número del cliente (Meta Cloud API o Twilio)",
+          "Pruebas de intención y validación de flujos equivalentes al chat web",
+        ],
+      },
+      {
+        title: "Qué se entrega",
+        items: [
+          "Número o método de acceso habilitado",
+          "Flow operativo y checklist de pruebas",
+        ],
+      },
+      {
+        title: "Requisitos",
+        items: [
+          "Cuenta WhatsApp Business API aprobada",
+          "Plantillas preaprobadas por el cliente (si se usarán mensajes proactivos)",
+          "Costos del proveedor (Meta/Twilio/BSP) a cargo del cliente",
+        ],
+      },
+    ],
+  },
+  {
+    key: "addon-ecommerce",
+    title: "Add-on E-commerce (Stripe + catálogo)",
+    image: ecommerceImg,
+    features: [
+      "Cobro directo a Stripe",
+      "Catálogo integrado al chat/WhatsApp",
+      "Automatización con IA para compras",
+    ],
+    price: "$1,500 MXN setup único (+IVA)",
+    sections: [
+      {
+        title: "Características destacadas",
+        items: [
+          "Cobros directos en tu Stripe (Connect Express)",
+          "Catálogo integrado en chat y WhatsApp",
+          "Automatización con IA para guiar la compra",
+        ],
+      },
+      {
+        title: "Detalles",
+        items: [
+          "Setup Stripe Connect Express (onboarding + conexión de cuenta)",
+          "Configuración de Checkout y pruebas en test/live",
+          "Carga/normalización de hasta 500 productos desde catalog_url (JSON)",
+          "Actualización de catálogos y soporte para price_id/product_id",
+          "Mantenimiento mensual opcional a definir",
+        ],
+      },
+      {
+        title: "Qué se entrega",
+        items: [
+          "Catálogo normalizado y visible en el widget",
+          "Stripe listo para cobrar vía chat",
+        ],
+      },
+      {
+        title: "Requisitos",
+        items: [
+          "Cuenta Stripe activa con acceso al dashboard",
+          "catalog_url público con productos y precios",
+        ],
+      },
+    ],
+  },
+  {
+    key: "modulo-meta",
+    title: "Módulo Meta (próximamente)",
+    image: metaImg,
+    features: [
+      "Automatización de DM y comentarios",
+      "Respuestas y redirecciones alineadas a políticas",
+      "Registro de eventos por tenant",
+    ],
+    sections: [
+      {
+        title: "Características destacadas",
+        items: [
+          "Atención automatizada en DM y comentarios de Facebook/Instagram",
+          "Respuestas públicas y privados con redirecciones a WhatsApp o URLs",
+          "Cumplimiento con políticas de Meta",
+        ],
+      },
+      {
+        title: "Detalles",
+        body: "Respuesta pública + mensaje privado cuando aplique, con registro de eventos por tenant.",
+      },
+      {
+        title: "Precio",
+        body: "Se definirá al momento del lanzamiento.",
+      },
+      {
+        title: "Requisitos",
+        items: [
+          "Páginas y cuentas de Instagram con permisos completos",
+          "Business Manager configurado",
+        ],
+      },
+    ],
+  },
+  {
+    key: "paquete-web",
+    title: "Paquete Páginas web + Starter",
+    image: webCoreImg,
+    features: [
+      "Sitio web + Plan Starter integrado",
+      "Dominio y hosting por 1 año",
+      "Correo empresarial incluido",
+    ],
+    price: "Pago inicial: $5,000 MXN | Mensual: $1,500 MXN (+IVA)",
+    sections: [
+      {
+        title: "Características destacadas",
+        items: [
+          "Sitio web nuevo con Plan Starter listo",
+          "Dominio .com o .com.mx gratis por 1 año",
+          "Hosting incluido y correo empresarial (hasta 3 alias)",
+        ],
+      },
+      {
+        title: "Detalles",
+        items: [
+          "CMS Wix/WordPress autoadministrable o código administrado por nosotros",
+          "Hosting incluido durante el primer año",
+          "Inserción del widget Starter",
+        ],
+      },
+      {
+        title: "Qué incluye",
+        items: [
+          "Implementación del sitio",
+          "Alta de dominio y hosting",
+          "Mantenimiento mensual y actualizaciones ilimitadas",
+        ],
+      },
+      {
+        title: "Qué se entrega",
+        items: [
+          "Sitio publicado con accesos",
+          "Snippet del widget y guía",
+        ],
+      },
+      {
+        title: "Requisitos",
+        items: [
+          "Contenidos, imágenes y branding del cliente",
+          "Estructura deseada del sitio",
+        ],
+      },
+    ],
+  },
+  {
+    key: "paquete-ecommerce",
+    title: "Paquete E-commerce web + Starter",
+    image: webEcommerceImg,
+    features: [
+      "Tienda en línea + Plan Starter",
+      "Dominio y hosting incluidos",
+      "Integración a plataforma elegida",
+    ],
+    price: "Pago inicial: $6,000 MXN | Mensual: $2,000 MXN (+IVA)",
+    sections: [
+      {
+        title: "Características destacadas",
+        items: [
+          "Sitio e-commerce con Plan Starter",
+          "Dominio .com o .com.mx gratis por 1 año",
+          "Correo empresarial y hosting incluidos",
+        ],
+      },
+      {
+        title: "Detalles",
+        items: [
+          "Implementación en Shopify (licencia del cliente), WooCommerce o Mercado Shops",
+          "Hosting incluido el primer año dependiendo de la plataforma",
+          "Integración básica con la plataforma elegida",
+        ],
+      },
+      {
+        title: "Qué incluye",
+        items: [
+          "Implementación de la tienda y widget Starter",
+          "Mantenimiento mensual y actualizaciones ilimitadas",
+        ],
+      },
+      {
+        title: "Qué se entrega",
+        items: [
+          "Tienda publicada con accesos",
+          "Snippets y documentación del widget",
+        ],
+      },
+      {
+        title: "Requisitos",
+        items: [
+          "Catálogo de productos, políticas y medios de pago",
+          "Stripe u otros medios configurados en la plataforma",
+        ],
+      },
+    ],
+  },
+];
+
+const CLIENT_REQUIREMENTS = [
+  "Starter: sitio web donde insertar el widget y FAQs base",
+  "WhatsApp: cuenta WhatsApp Business API aprobada y proveedor (Meta Cloud API o Twilio) a cargo del cliente",
+  "E-commerce (add-on): cuenta Stripe activa y catalog_url/IDs de producto o precio",
+  "Paquetes web: contenidos, branding y estructura deseada; para e-commerce, catálogo e integración preferida",
+  "Stripe solo se configura cuando se contrata el add-on de e-commerce",
+  "Founders Plan: a partir del segundo módulo o paquete en el mismo tenant, 50% de descuento (excepto add-on WhatsApp salvo promos vigentes)",
+];
+
+const GENERAL_CONDITIONS = [
+  "Uso incluido por mes: 1M tokens de entrada + 1M tokens de salida por tenant; excedentes se cobran con bolsas adicionales",
+  "Modelos incluidos: familia GPT-4o mini; modelos premium o contextos ampliados se cotizan aparte",
+  "Pagos externos: comisiones de Stripe y proveedores de WhatsApp (Meta/Twilio/BSP) a cargo del cliente",
+  "Trabajamos exclusivamente con Twilio o Meta Cloud API para WhatsApp, según disponibilidad por país",
+  "Plazo anual (12 meses) con renovación automática; cancelación con 30 días de anticipación",
+  "SLA: soporte en horario hábil, incidencias críticas con máximo esfuerzo; cambios mayores se cotizan",
+  "Actualizaciones continuas del widget, parches de seguridad y compatibilidad con nuevos releases",
+  "Cada cliente es responsable de políticas, textos legales y uso legítimo de sus datos",
+];
+
+function PlanCard({ plan, isDark, onShowDetails, onScrollToContact }: {
+  plan: PlanCardData;
+  isDark: boolean;
+  onShowDetails: (plan: PlanCardData) => void;
+  onScrollToContact: () => void;
+}) {
   return (
-    <div className={`rounded-2xl p-6 ${isDark ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10"} border ${lowPower ? "" : "backdrop-blur"}`}>
-      <div className="flex items-baseline justify-between gap-4">
-        <h4 className={`text-xl font-semibold ${isDark ? "text-white/90" : "text-black/90"}`}>{title}</h4>
-        {price && <div className="text-[#04d9b5] font-semibold">MXN {price}</div>}
+    <div
+      className={`relative flex flex-col rounded-3xl border p-6 transition ${
+        isDark ? "border-white/10 bg-white/5" : "border-black/10 bg-black/5"
+      }`}
+    >
+      <img
+        src={plan.image}
+        alt={plan.title}
+        className="h-40 w-full rounded-2xl object-cover"
+        loading="lazy"
+      />
+      <h4 className="mt-5 text-xl font-semibold">{plan.title}</h4>
+      <ul className={`mt-3 space-y-2 text-sm ${isDark ? "text-white/70" : "text-black/70"}`}>
+        {plan.features.map((feature) => (
+          <li key={feature} className="flex items-start gap-2">
+            <span className="mt-1 h-2 w-2 rounded-full bg-[#04d9b5]" aria-hidden="true" />
+            <span>{feature}</span>
+          </li>
+        ))}
+      </ul>
+      {plan.price && (
+        <div className="mt-5 text-sm font-semibold text-[#04d9b5]">{plan.price}</div>
+      )}
+      <div className="mt-6 flex flex-wrap gap-2">
+        <button
+          onClick={() => onShowDetails(plan)}
+          className="rounded-xl border border-[#04d9b5] px-4 py-2 text-sm font-medium text-[#04d9b5] transition hover:bg-[#04d9b5]/10"
+          type="button"
+        >
+          Detalles
+        </button>
+        <button
+          onClick={onScrollToContact}
+          className="rounded-xl bg-[#04d9b5]/10 px-4 py-2 text-sm font-medium text-[#04d9b5] transition hover:bg-[#04d9b5]/20"
+          type="button"
+        >
+          Probar
+        </button>
+        <button
+          onClick={onScrollToContact}
+          className="rounded-xl bg-[#04d9b5] px-4 py-2 text-sm font-medium text-black transition hover:brightness-110"
+          type="button"
+        >
+          Agregar al carrito
+        </button>
       </div>
-      <div className={`mt-3 ${isDark ? "text-white/70" : "text-black/70"}`}>{children}</div>
     </div>
   );
 }
 
-/* ========= Configurador modular ========= */
-const MODULES = [
-  { key: "core", name: "Lu Core", price: 2000, promoEligible: true, desc: "Burbuja web + IA 24/7" },
-  { key: "meta", name: "Módulo Meta", price: 1000, promoEligible: true, desc: "Facebook, Messenger, Instagram (comentarios y DM)" },
-  { key: "ecom", name: "Módulo e-Commerce", price: 1500, promoEligible: true, desc: "Catálogo, búsqueda, checkout" },
-  { key: "interact", name: "Módulos Interactivos", price: 1000, promoEligible: true, desc: "Pedidos con pago, notificaciones WhatsApp" },
-  { key: "wa", name: "Add-on WhatsApp", price: 500, promoEligible: false, desc: "Habilitación + mantenimiento (no entra promo)" },
-];
-function PricingConfigurator({ isDark }: { isDark: boolean }) {
-  const [selected, setSelected] = useState<string[]>(["core"]);
-  const toggle = (k: string) =>
-    setSelected((s) => (s.includes(k) ? s.filter((x) => x !== k) : [...s, k]));
-
-  const selectedModules = MODULES.filter((m) => selected.includes(m.key));
-  const eligible = selectedModules.filter((m) => m.promoEligible);
-  const promo = eligible.length >= 2 ? 0.5 : 0;
-
-  const total = selectedModules.reduce((acc, m) => {
-    const discounted =
-      m.promoEligible && promo > 0 ? Math.round(m.price * (1 - promo)) : m.price;
-    return acc + discounted;
-  }, 0);
-
+function PlanCarousel({
+  plans,
+  isDark,
+  onShowDetails,
+  onScrollToContact,
+  label,
+}: {
+  plans: PlanCardData[];
+  isDark: boolean;
+  onShowDetails: (plan: PlanCardData) => void;
+  onScrollToContact: () => void;
+  label: string;
+}) {
   return (
-    <div className="mt-10 grid lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-2 grid sm:grid-cols-2 gap-4">
-        {MODULES.map((m) => {
-          const on = selected.includes(m.key);
-          const eligibles = selected.filter((k) => MODULES.find((x) => x.key === k)?.promoEligible).length;
-          const discounted = m.promoEligible && eligibles >= 2;
-          const final = discounted ? Math.round(m.price * 0.5) : m.price;
-          return (
-            <button
-              key={m.key}
-              onClick={() => toggle(m.key)}
-              className={`text-left rounded-2xl border p-4 transition ${
-                on
-                  ? "border-[#04d9b5]/70 bg-[#04d9b5]/10"
-                  : isDark
-                  ? "border-white/10 bg-white/5 hover:bg-white/10"
-                  : "border-black/10 bg-black/5 hover:bg-black/10"
-              }`}
+    <div className="mt-10">
+      <h4 className="text-lg font-semibold mb-4">{label}</h4>
+      <div className="relative">
+        <div
+          className="flex gap-6 overflow-x-auto pb-6 snap-x snap-mandatory"
+          style={{ scrollbarWidth: "none" as any }}
+        >
+          {plans.map((plan) => (
+            <div
+              key={plan.key}
+              className="w-[90vw] max-w-[380px] snap-center shrink-0"
             >
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <div className="font-semibold">{m.name}</div>
-                  <div className={`text-sm ${isDark ? "text-white/60" : "text-black/60"}`}>{m.desc}</div>
-                </div>
-                <div className="text-right">
-                  {discounted ? (
-                    <div className="text-sm text-[#04d9b5]">
-                      MXN {final.toLocaleString()}
-                      <div className={`text-[11px] ${isDark ? "text-white/50" : "text-black/50"} line-through`}>MXN {m.price.toLocaleString()}</div>
-                    </div>
-                  ) : (
-                    <div>MXN {m.price.toLocaleString()}</div>
-                  )}
-                </div>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className={`rounded-2xl border p-6 h-fit sticky top-24 ${isDark ? "border-white/10 bg-white/5" : "border-black/10 bg-black/5"}`}>
-        <h4 className="text-lg font-semibold mb-3">Resumen</h4>
-        <ul className={`text-sm space-y-1 mb-4 ${isDark ? "text-white/70" : "text-black/70"}`}>
-          {selectedModules.map((m) => (
-            <li key={m.key}>• {m.name}</li>
+              <PlanCard
+                plan={plan}
+                isDark={isDark}
+                onShowDetails={onShowDetails}
+                onScrollToContact={onScrollToContact}
+              />
+            </div>
           ))}
-        </ul>
-        {eligible.length >= 2 ? (
-          <div className="text-[#04d9b5] text-sm mb-2">Founder’s Plan: −50% en módulos elegibles</div>
-        ) : (
-          <div className={`${isDark ? "text-white/50" : "text-black/50"} text-sm mb-2`}>Agrega 2+ módulos elegibles para −50%</div>
-        )}
-        <div className="text-xl font-bold">Total: MXN {total.toLocaleString()}</div>
-        <div className={`text-xs mt-1 ${isDark ? "text-white/50" : "text-black/50"}`}>* Precios sin IVA</div>
+        </div>
       </div>
     </div>
   );
@@ -183,20 +520,14 @@ export default function App() {
   const { scrollYProgress: heroProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
   const heroSmooth = useSpring(heroProgress, { stiffness: 70, damping: 20, mass: 0.3 });
 
-  // Escala + blur (smoke). Más blur en equipos capaces.
+  // Escala general para el grupo de blobs (más sutil en equipos modestos).
   const scale = useTransform(
     heroSmooth,
     [0, 0.6, 1],
-    lowPower ? [1, 2.4, 3.2] : [1, 3.8, 5.0]
+    lowPower ? [1.15, 0.8, 0.55] : [1.28, 0.9, 0.6]
   );
-  const blurVal = useTransform(
-    heroSmooth,
-    [0, 0.7, 1],
-    lowPower ? [14, 22, 30] : [26, 56, 84]
-  );
-  const blurCss = useTransform(blurVal, (v: number) => `blur(${Math.round(v)}px)`);
 
-  // Crossfade morado → verde (en todos los dispositivos) para asegurar el verde
+  const heroYOffset = useTransform(heroSmooth, [0, 0.5, 1], [0, -80, -220]);
 
   // Desvanecer para revelar contenido (fade más tardío)
   const smokeOpacity = useTransform(heroSmooth, [0, 0.85, 1.0], [1, 0.75, 0]);
@@ -213,24 +544,13 @@ export default function App() {
     } catch {}
   }, []);
 
-  // Transición morado → rosa → verde en dark; inversa en light
-  const purpleRange = isDark ? [0.0, 0.5, 0.75] : [0.6, 0.85, 1.0];
-  const purpleVals  = isDark ? [1,   0.3,  0]    : [0,   0.9,  1];
-  const pinkRange   =          [0.35, 0.6, 0.85];
-  const pinkVals    =          [0,    1,   0];
-  const greenRange  = isDark ? [0.6, 0.85, 1.0]  : [0.0, 0.5, 0.75];
-  const greenVals   = isDark ? [0,   0.9,  1]    : [1,   0.3,  0];
-
-  const purpleOpacity = useTransform(heroSmooth, purpleRange, purpleVals);
-  const pinkOpacity   = useTransform(heroSmooth, pinkRange, pinkVals);
-  const greenOpacity  = useTransform(heroSmooth, greenRange, greenVals);
   // Secuencia final: fade a negro → título → fade out → mostrar contenido
   // Ajuste: que aparezca en el "medio" del HERO
   // Antes iniciaba muy tarde (~0.65). Adelantamos el rango para que
   // el título sea visible alrededor del 50–80% del scroll del HERO.
-  const overlayOpacity = useTransform(heroSmooth, [0.42, 0.5, 0.86, 0.94], [0, 1, 1, 0]);
-  const titleOpacity   = useTransform(heroSmooth, [0.5, 0.56, 0.8, 0.86],   [0, 1, 1, 0]);
-  const titleScale     = useTransform(heroSmooth, [0.5, 0.86],               [0.98, 1.06]);
+  const overlayOpacity = useTransform(heroSmooth, [0, 0.9, 1], [1, 1, 0]);
+  const titleOpacity   = useTransform(heroSmooth, [0, 0.1, 0.82, 1], [1, 1, 0.6, 0]);
+  const titleScale     = useTransform(heroSmooth, [0, 0.5, 1], [1, 1.18, 1.36]);
 
   // Mostrar nav solo al final del hero
   const navOpacity = useTransform(heroSmooth, [0.98, 1], [0, 1]);
@@ -242,6 +562,7 @@ export default function App() {
 
   // Scroll-spy
   const [active, setActive] = useState("inicio");
+  const [activePlan, setActivePlan] = useState<PlanCardData | null>(null);
   useEffect(() => {
     const ids = ["inicio", "quienes-somos", "planes", "contacto"];
     const sections = ids
@@ -274,6 +595,105 @@ export default function App() {
     sections.forEach((el) => io.observe(el));
     return () => io.disconnect();
   }, []);
+
+  useEffect(() => {
+    if (!activePlan) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setActivePlan(null);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [activePlan]);
+
+  const scrollToContact = () => {
+    const contact = document.getElementById("contacto");
+    if (contact) {
+      contact.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  const closeAndContact = () => {
+    setActivePlan(null);
+    scrollToContact();
+  };
+
+  const primaryPlans = PLAN_CARDS.slice(0, 4);
+  const webPlans = PLAN_CARDS.slice(4);
+
+  const lavaBlobs = useMemo(() => {
+    const baseConfigs = [
+      {
+        id: "blob-a",
+        focus: "32% 28%",
+        size: "46vmin",
+        opacity: isDark ? 0.9 : 0.8,
+        initial: { x: -60, y: -50, scale: 1.05 },
+        animate: {
+          x: [-60, 30, -20, -60],
+          y: [-50, -90, 40, -50],
+          scale: [1.05, 1.22, 0.94, 1.05],
+        },
+        duration: 14,
+      },
+      {
+        id: "blob-b",
+        focus: "68% 40%",
+        size: "50vmin",
+        opacity: isDark ? 0.85 : 0.75,
+        initial: { x: 40, y: 10, scale: 1.1 },
+        animate: {
+          x: [40, -10, 60, 40],
+          y: [10, 70, -40, 10],
+          scale: [1.1, 0.96, 1.25, 1.1],
+        },
+        duration: 16,
+      },
+      {
+        id: "blob-c",
+        focus: "58% 72%",
+        size: "54vmin",
+        opacity: isDark ? 0.8 : 0.7,
+        initial: { x: -10, y: 70, scale: 0.95 },
+        animate: {
+          x: [-10, 70, -60, -10],
+          y: [70, 20, 100, 70],
+          scale: [0.95, 1.18, 0.9, 0.95],
+        },
+        duration: 18,
+      },
+      {
+        id: "blob-d",
+        focus: "42% 64%",
+        size: "38vmin",
+        opacity: isDark ? 0.75 : 0.65,
+        initial: { x: -90, y: 40, scale: 1 },
+        animate: {
+          x: [-90, -30, -120, -90],
+          y: [40, 90, -10, 40],
+          scale: [1, 1.12, 0.88, 1],
+        },
+        duration: 20,
+      },
+    ];
+
+    return baseConfigs.map(({ focus, ...config }) => {
+      const hue = Math.floor(Math.random() * 360);
+      const hueOffset = (hue + 30 + Math.random() * 60) % 360;
+      const saturation = 68 + Math.random() * 20;
+      const lightness = (isDark ? 52 : 58) + Math.random() * 8;
+      const coreAlpha = isDark ? 0.88 : 0.72;
+      const midAlpha = isDark ? 0.28 : 0.22;
+      const core = `hsla(${hue}, ${saturation}%, ${lightness}%, ${coreAlpha})`;
+      const mid = `hsla(${hueOffset}, ${Math.min(100, saturation + 10)}%, ${Math.max(30, lightness - 18)}%, ${midAlpha})`;
+
+      return {
+        ...config,
+        background: `radial-gradient(circle at ${focus}, ${core} 0%, ${mid} 46%, rgba(0,0,0,0) 78%)`,
+      };
+    });
+  }, [isDark]);
 
   // ===== Interacción: cursor en desktop, acelerómetro en móvil =====
   const mvX = useMotionValue(0);
@@ -336,7 +756,105 @@ export default function App() {
     <div ref={ref} className={`relative min-h-[260vh] ${isDark ? "bg-black text-white" : "bg-white text-black"}`}>
       <Nav active={active} visible={navVisible} isDark={isDark} />
 
-      {/* ===== HERO: bola con hue-rotate ===== */}
+      {activePlan && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center px-4">
+          <div
+            className="absolute inset-0 bg-black/70"
+            onClick={() => setActivePlan(null)}
+            role="presentation"
+          />
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25 }}
+            className={`relative w-full max-w-xl rounded-3xl border p-6 shadow-xl ${
+              isDark
+                ? "border-white/10 bg-black/90 text-white"
+                : "border-black/10 bg-white text-black"
+            }`}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="plan-modal-title"
+          >
+            <button
+              onClick={() => setActivePlan(null)}
+              className={`absolute right-4 top-4 rounded-full border px-2 py-1 text-sm ${
+                isDark ? "border-white/20 text-white/70 hover:text-white" : "border-black/10 text-black/60 hover:text-black"
+              }`}
+              aria-label="Cerrar"
+              type="button"
+            >
+              ×
+            </button>
+            <div className="flex items-center gap-4">
+              <img
+                src={activePlan.image}
+                alt={activePlan.title}
+                className="h-20 w-20 rounded-2xl object-cover"
+              />
+              <div>
+                <h4 id="plan-modal-title" className="text-2xl font-semibold">
+                  {activePlan.title}
+                </h4>
+                {activePlan.price && (
+                  <div className="mt-2 text-sm font-semibold text-[#04d9b5]">{activePlan.price}</div>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 space-y-5">
+              {activePlan.sections
+                .filter((section) => section.title !== "Características destacadas")
+                .map((section) => (
+                  <div key={`${activePlan.key}-${section.title}`}>
+                    <h5 className="text-xs font-semibold uppercase tracking-[0.3em] text-[#04d9b5]">
+                      {section.title}
+                    </h5>
+                    {section.body && (
+                    <p className={`mt-2 text-sm leading-relaxed ${isDark ? "text-white/70" : "text-black/70"}`}>
+                      {section.body}
+                    </p>
+                  )}
+                  {section.items && (
+                    <ul className={`mt-3 space-y-2 text-sm ${isDark ? "text-white/70" : "text-black/70"}`}>
+                      {section.items.map((item) => (
+                        <li key={item} className="flex items-start gap-2">
+                          <span className="mt-1 h-2 w-2 rounded-full bg-[#04d9b5]" aria-hidden="true" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="mt-6 flex flex-wrap gap-2">
+              <button
+                onClick={closeAndContact}
+                className="rounded-xl bg-[#04d9b5] px-4 py-2 text-sm font-semibold text-black transition hover:brightness-110"
+                type="button"
+              >
+                Comprar ahora
+              </button>
+              <button
+                onClick={closeAndContact}
+                className="rounded-xl border border-[#04d9b5] px-4 py-2 text-sm font-medium text-[#04d9b5] transition hover:bg-[#04d9b5]/10"
+                type="button"
+              >
+                Agregar al carrito
+              </button>
+              <button
+                onClick={closeAndContact}
+                className="rounded-xl bg-[#04d9b5]/10 px-4 py-2 text-sm font-medium text-[#04d9b5] transition hover:bg-[#04d9b5]/20"
+                type="button"
+              >
+                Probar
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* ===== HERO: lava lamp ===== */}
       <section id="inicio" ref={heroRef as any} className="relative h-[200vh] z-0">
         <div className="sticky top-0 h-screen overflow-hidden z-40">
           <div
@@ -350,78 +868,51 @@ export default function App() {
             }}
           />
           <motion.div
-            // Bola central: se mueve con x/y y escala con scroll.
-            style={{
-              x,
-              y: yMix as any,
-              scale,
-              opacity: smokeOpacity,
-              filter: blurCss,
-              willChange: "transform, filter",
-            }}
-            className="absolute inset-0 m-auto aspect-square w-[60vmin] rounded-full pointer-events-none z-50"
+            className="absolute inset-0 flex flex-col items-center justify-center gap-28 md:gap-36 pointer-events-none z-50"
+            style={{ opacity: overlayOpacity, y: heroYOffset }}
           >
-            {/* Crossfade morado → rosa → verde */}
-            <>
-              <motion.div
-                className="absolute inset-0 rounded-full"
-                style={{
-                  opacity: purpleOpacity,
-                  mixBlendMode: lowPower ? "normal" : ((isDark ? "screen" : "multiply") as any),
-                }}
-              >
-                <div
-                  className="absolute inset-0 rounded-full"
-                  style={{
-                    background: `radial-gradient(circle at 50% 55%, ${PURPLE} 0%, rgba(85,0,150,0.55) 32%, rgba(85,0,150,0.18) 58%, transparent 90%)`,
-                  }}
-                />
-              </motion.div>
+            <motion.div
+              // Grupo de blobs con efecto lámpara de lava
+              style={{
+                x,
+                y: yMix as any,
+                scale,
+                opacity: smokeOpacity,
+                willChange: "transform",
+              }}
+              className="pointer-events-none"
+              aria-hidden="true"
+            >
+              <div className="relative aspect-square w-[64vmin] max-w-[520px]">
+                {lavaBlobs.map((blob) => (
+                  <motion.span
+                    key={blob.id}
+                    className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+                    style={{
+                      width: blob.size,
+                      height: blob.size,
+                      background: blob.background,
+                      opacity: blob.opacity,
+                      mixBlendMode: (lowPower ? "normal" : (isDark ? "screen" : "multiply")) as any,
+                    }}
+                    initial={blob.initial}
+                    animate={blob.animate}
+                    transition={{
+                      duration: blob.duration,
+                      ease: "easeInOut",
+                      repeat: Infinity,
+                      repeatType: "mirror",
+                    }}
+                  />
+                ))}
+              </div>
+            </motion.div>
 
-              <motion.div
-                className="absolute inset-0 rounded-full"
-                style={{
-                  opacity: pinkOpacity,
-                  mixBlendMode: lowPower ? "normal" : ((isDark ? "screen" : "multiply") as any),
-                }}
-              >
-                <div
-                  className="absolute inset-0 rounded-full"
-                  style={{
-                    background: `radial-gradient(circle at 50% 55%, ${PINK} 0%, rgba(255,79,216,0.55) 32%, rgba(255,79,216,0.18) 58%, transparent 90%)`,
-                  }}
-                />
-              </motion.div>
-
-              <motion.div
-                className="absolute inset-0 rounded-full"
-                style={{
-                  opacity: greenOpacity,
-                  mixBlendMode: lowPower ? "normal" : ((isDark ? "screen" : "multiply") as any),
-                }}
-              >
-                <div
-                  className="absolute inset-0 rounded-full"
-                  style={{
-                    background: `radial-gradient(circle at 50% 55%, ${GREEN} 0%, rgba(4,217,181,0.55) 32%, rgba(4,217,181,0.18) 58%, transparent 90%)`,
-                  }}
-                />
-              </motion.div>
-            </>
-          </motion.div>
-
-          {/* Overlay de narrativa (por encima de la bola) */}
-          <motion.div
-            className="absolute inset-0 pointer-events-none grid place-items-center"
-            style={{ backgroundColor: isDark ? "#000" : "#fff", opacity: overlayOpacity, zIndex: 60 }}
-          >
             <motion.h1
               style={{ opacity: titleOpacity, scale: titleScale }}
-              className="px-6 text-center text-4xl md:text-8xl lg:text-9xl font-extrabold tracking-tight w-full"
+              className="inline-flex items-baseline px-6 text-center text-5xl md:text-7xl lg:text-8xl font-extrabold tracking-tight"
             >
-              <span style={{ color: PINK }}>IA</span>
-              <span className={`mx-2 ${isDark ? "text-white" : "text-black"}`}>para tu</span>
-              <span style={{ color: ORANGE }}>negocio</span>
+              <span className="bg-gradient-to-br from-[#ff4fd8] via-[#c152ff] to-[#a200ff] bg-clip-text text-transparent">A</span><span className={isDark ? "text-white" : "text-black"}>cid</span><span className="bg-gradient-to-r from-[#ff8a00] via-[#ff9f3d] to-[#ffd166] bg-clip-text text-transparent">IA</span>
             </motion.h1>
           </motion.div>
 
@@ -431,89 +922,208 @@ export default function App() {
         </div>
       </section>
 
-      {/* (Cortina movida dentro del HERO) */}
-
-      {/* ===== QUIÉNES SOMOS ===== */}
-      <Section id="quienes-somos" title="¿Quiénes somos?">
+      {/* ===== QUÉ HACEMOS ===== */}
+      <Section id="quienes-somos" title="¿Qué es lo que hacemos?" className="pt-6 md:pt-8 pb-16">
         <p className={`text-lg leading-relaxed text-center max-w-3xl mx-auto ${isDark ? "text-white/80" : "text-black/80"}`}>
-          Somos una empresa mexicana de soluciones de <span className="text-[#04d9b5]">inteligencia artificial</span>,{" "}
-          <span className="text-[#04d9b5]">automatización</span> y <span className="text-[#04d9b5]">ciencia de datos</span>.
-          Nuestro objetivo: poner tecnología de clase mundial al alcance de negocios reales para que tomen mejores decisiones y escalen sin drama.
+          Automatizamos tus procesos con herramientas de inteligencia artificial diseñadas a las necesidades reales de tu negocio. Combinamos analítica, ciencia de datos y machine learning para detectar oportunidades, anticipar demanda y entregar información accionable a cada equipo.
         </p>
         <div className="mt-12 grid md:grid-cols-3 gap-6 text-left">
-          <ValueCard isDark={isDark} title="Innovación">Experimentamos, prototipamos y lanzamos soluciones que mueven la aguja.</ValueCard>
-          <ValueCard isDark={isDark} title="Oportunidad al talento nuevo">Nos oponemos a las puertas cerradas. Apostamos por mentes frescas con hambre de crecer.</ValueCard>
-          <ValueCard isDark={isDark} title="Transparencia">Nada de letras chiquitas. Arquitecturas, precios y alcances claros para avanzar parejo.</ValueCard>
+          <ValueCard isDark={isDark} title="Automatización con propósito">Mapeamos la operación y la convertimos en experiencias conversacionales que capturan datos útiles sin perder el tono humano de tu marca.</ValueCard>
+          <ValueCard isDark={isDark} title="Analítica + ciencia de datos">Integramos tus fuentes, limpiamos la señal y construimos tableros que cuentan la historia completa de tu negocio en tiempo real.</ValueCard>
+          <ValueCard isDark={isDark} title="Machine learning aplicado">Entrenamos modelos que aprenden de tu operación para segmentar, recomendar y detectar patrones antes de que se conviertan en problemas.</ValueCard>
+        </div>
+      </Section>
+
+      <Section title="Servicio al cliente 24/7" className="pt-0 pb-16">
+        <div className={`mx-auto max-w-3xl text-center text-lg leading-relaxed ${isDark ? "text-white/80" : "text-black/80"}`}>
+          <p>
+            Nuestra IA nunca duerme, pero detrás siempre hay humanos listos para intervenir. Si una conversación necesita empatía o criterio, nuestro equipo toma el control sin tickets interminables ni respuestas enlatadas.
+          </p>
+          <p className="mt-6">
+            Piensa en un concierge digital que detecta la intención, prepara a la persona correcta y mantiene informados a tus clientes. Eso es servicio al cliente 24/7, con calidad humana y velocidad de máquina.
+          </p>
         </div>
       </Section>
 
       {/* ===== PLANES Y PRECIOS ===== */}
       <Section id="planes" title="Nuestros planes y precios">
         <p className={`text-lg text-center max-w-3xl mx-auto ${isDark ? "text-white/80" : "text-black/80"}`}>
-          Planes <span className="text-[#04d9b5]">modulares</span> que se adaptan a tu operación.
-          Estamos en <span className="font-semibold text-[#04d9b5]">Founder’s Plan</span>: 50% de descuento comprando 2 o más módulos.
-          <br />
-          <span className={`text-sm ${isDark ? "text-white/50" : "text-black/50"}`}>* El add-on de WhatsApp (integración y mantenimiento) no entra en la promo.</span>
+          Diseñamos paquetes modulares para activar <span className="text-[#04d9b5]">IA en tu operación</span> sin fricción.
+          Elige el plan que necesitas hoy y escala con nosotros cuando estés listo.
         </p>
 
-        <PricingConfigurator isDark={isDark} />
+        <PlanCarousel
+          plans={primaryPlans}
+          isDark={isDark}
+          onShowDetails={(p) => setActivePlan(p)}
+          onScrollToContact={scrollToContact}
+          label="Módulos y add-ons"
+        />
 
-        <h3 className="mt-16 text-2xl font-semibold text-center">Paquetes recomendados</h3>
-        <div className="mt-6 grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <PriceCard isDark={isDark} title="Social Boost" price="3,000">Lu Core + Módulo Meta</PriceCard>
-          <PriceCard isDark={isDark} title="e-Commerce" price="3,000">Lu Core + Módulo e-Commerce</PriceCard>
-          <PriceCard isDark={isDark} title="Full Commerce" price="4,500">Lu Core + e-Commerce + Meta</PriceCard>
-          <PriceCard isDark={isDark} title="Omnin" price="5,500">Todos los módulos</PriceCard>
-        </div>
+        <PlanCarousel
+          plans={webPlans}
+          isDark={isDark}
+          onShowDetails={(p) => setActivePlan(p)}
+          onScrollToContact={scrollToContact}
+          label="Paquetes web"
+        />
 
-        <p className={`text-sm mt-8 text-center ${isDark ? "text-white/50" : "text-black/50"}`}>* Precios en MXN. No incluyen IVA.</p>
-
-        <h3 className="mt-16 text-2xl font-semibold text-center">Páginas Web + IA</h3>
-        <div className="mt-6 grid md:grid-cols-2 gap-6">
-          <PriceCard isDark={isDark} title="Web + Lu Core" price="5,000 inicial / 1,500 mensual">
-            Dominio gratis por 1 año (sujeto a disponibilidad). 1 correo gratis o Gmail a mitad de precio (hasta 5 cuentas).
-          </PriceCard>
-          <PriceCard isDark={isDark} title="Web + e-Commerce" price="6,000 inicial / 2,000 mensual">
-            Incluye apps de e-Commerce. Mismos beneficios de dominio y correo.
-          </PriceCard>
-        </div>
-
-        <div className={`mt-8 text-sm text-center ${isDark ? "text-white/60" : "text-black/60"}`}>
-          <span className={`font-semibold ${isDark ? "text-white/80" : "text-black/80"}`}>Nota:</span> integración de WhatsApp Business disponible como add-on.
-          Incluye habilitación y mantenimiento mensual. Ideal para notificaciones, pedidos y atención directa.
+        <p className={`mt-8 text-sm text-center ${isDark ? "text-white/60" : "text-black/60"}`}>
+          * Precios en MXN. No incluyen IVA. Podemos combinar planes o armar uno a medida.
+        </p>
+        <div className="mt-12 grid gap-6 lg:grid-cols-2">
+          <Accordion
+            isDark={isDark}
+            title="Requisitos del cliente"
+            content={
+              <ul className="space-y-2">
+                {CLIENT_REQUIREMENTS.map((item) => (
+                  <li key={item} className="flex gap-2">
+                    <span className="mt-1 h-2 w-2 rounded-full bg-[#04d9b5]" aria-hidden="true" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            }
+          />
+          <Accordion
+            isDark={isDark}
+            title="Condiciones generales"
+            content={
+              <ul className="space-y-2">
+                {GENERAL_CONDITIONS.map((item) => (
+                  <li key={item} className="flex gap-2">
+                    <span className="mt-1 h-2 w-2 rounded-full bg-[#04d9b5]" aria-hidden="true" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            }
+          />
         </div>
       </Section>
 
       {/* ===== CONTACTO ===== */}
       <Section id="contacto" title="Contacto">
         <p className={`text-lg mb-10 text-center ${isDark ? "text-white/80" : "text-black/80"}`}>
-          Hablemos. Podemos mostrarte una demo, resolver dudas y armar un plan a tu medida.
-          Si lo prefieres, déjanos tus datos y te escribimos en menos de 24 horas.
+          Hablemos. Podemos mostrarte una demo, resolver dudas y armar un plan a tu medida. Déjanos tus datos y te escribimos en menos de 24 horas.
         </p>
-        <form className="grid gap-4 max-w-xl mx-auto text-left">
-          <input
-            type="text"
-            placeholder="Tu nombre"
-            className={`px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-[#04d9b5] ${isDark ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10"}`}
-          />
-          <input
-            type="email"
-            placeholder="Tu correo"
-            className={`px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-[#04d9b5] ${isDark ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10"}`}
-          />
-          <textarea
-            rows={4}
-            placeholder="Cuéntanos de tu proyecto"
-            className={`px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-[#04d9b5] ${isDark ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10"}`}
-          />
-          <button
-            type="submit"
-            className="rounded-xl bg-[#04d9b5] text-black px-6 py-3 font-medium shadow hover:brightness-110 transition"
-          >
-            Enviar
-          </button>
-        </form>
+        <ContactForm isDark={isDark} />
       </Section>
+    </div>
+  );
+}
+function Accordion({
+  title,
+  content,
+  isDark,
+}: {
+  title: string;
+  content: ReactNode;
+  isDark: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div
+      className={`rounded-3xl border transition ${
+        isDark ? "border-white/10 bg-white/5" : "border-black/10 bg-black/5"
+      }`}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-4 px-6 py-4"
+      >
+        <span className="text-lg font-semibold bg-gradient-to-r from-[#ff4fd8] via-[#04d9b5] to-[#ff8a00] bg-clip-text text-transparent">
+          {title}
+        </span>
+        <span className="text-[#04d9b5] text-xl">{open ? "−" : "+"}</span>
+      </button>
+      <motion.div
+        initial={false}
+        animate={{ height: open ? "auto" : 0, opacity: open ? 1 : 0 }}
+        transition={{ duration: 0.25 }}
+        className="overflow-hidden px-6"
+      >
+        <div className={`pb-5 text-sm leading-relaxed ${isDark ? "text-white/70" : "text-black/70"}`}>
+          {content}
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function ContactForm({ isDark }: { isDark: boolean }) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [status, setStatus] = useState<"idle" | "sending" | "ok" | "error">("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  const endpoint = (import.meta as any).env?.VITE_CONTACT_ENDPOINT as string | undefined;
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setStatus("sending");
+    setError(null);
+    const res = await sendContact({ name, email, message });
+    if (res.ok) {
+      setStatus("ok");
+      setName("");
+      setEmail("");
+      setMessage("");
+    } else {
+      setStatus("error");
+      setError(res.error || "No se pudo enviar. Intenta de nuevo.");
+    }
+  }
+
+  return (
+    <div>
+      {!endpoint && (
+        <div className={`mb-4 text-sm ${isDark ? "text-white/60" : "text-black/60"}`}>
+          Configura VITE_CONTACT_ENDPOINT para activar el envío por correo.
+        </div>
+      )}
+      <form onSubmit={onSubmit} className="grid gap-4 max-w-xl mx-auto text-left">
+        <input
+          type="text"
+          required
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Tu nombre"
+          className={`px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-[#04d9b5] ${isDark ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10"}`}
+        />
+        <input
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Tu correo"
+          className={`px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-[#04d9b5] ${isDark ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10"}`}
+        />
+        <textarea
+          rows={4}
+          required
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="Cuéntanos de tu proyecto"
+          className={`px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-[#04d9b5] ${isDark ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10"}`}
+        />
+        <button
+          type="submit"
+          disabled={status === "sending"}
+          className={`rounded-xl bg-[#04d9b5] text-black px-6 py-3 font-medium shadow hover:brightness-110 transition ${status === "sending" ? "opacity-70 cursor-not-allowed" : ""}`}
+        >
+          {status === "sending" ? "Enviando…" : status === "ok" ? "Enviado" : "Enviar"}
+        </button>
+        {status === "ok" && (
+          <div className="text-sm text-[#04d9b5]">Gracias. Te contactaremos muy pronto.</div>
+        )}
+        {status === "error" && (
+          <div className="text-sm text-red-400">{error}</div>
+        )}
+      </form>
     </div>
   );
 }
