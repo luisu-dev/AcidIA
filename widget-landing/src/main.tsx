@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import PrivacyPage from "./Privacy";
 import TermsPage from "./Terms";
+import DataDeletionPage from "./DataDeletion";
 import "./index.css";
 
 // Habilita scroll suave solo en dispositivos capaces
@@ -15,10 +16,11 @@ try {
 const normalizedPath = window.location.pathname.replace(/\/+$/, "") || "/";
 const isPrivacy = normalizedPath === "/privacy";
 const isTerms = normalizedPath === "/terms";
+const isDataDeletion = normalizedPath === "/data-deletion";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    {isPrivacy ? <PrivacyPage /> : isTerms ? <TermsPage /> : <App />}
+    {isPrivacy ? <PrivacyPage /> : isTerms ? <TermsPage /> : isDataDeletion ? <DataDeletionPage /> : <App />}
   </React.StrictMode>
 );
 

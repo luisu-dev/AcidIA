@@ -1144,6 +1144,13 @@ function Footer({ isDark }: { isDark: boolean }) {
           >
             Aviso de privacidad
           </a>
+          <a
+            href="/data-deletion"
+            className={linkBase}
+            onClick={(event) => handleNavigate(event, "/data-deletion")}
+          >
+            Eliminación de datos
+          </a>
         </div>
         <div className={`text-xs ${textColor}`}>
           <a
