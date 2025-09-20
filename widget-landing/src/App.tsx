@@ -9,6 +9,7 @@ import ecommerceImg from "../images/ecommerce.png";
 import whatsappImg from "../images/whatsaddon.png";
 import webCoreImg from "../images/web1.png";
 import webEcommerceImg from "../images/web2.png";
+import faviconUrl from "../images/favicon.ico";
 import { sendContact } from "./lib/contact";
 
 /* ========= Rendimiento (bajar costos en Android/equipos modestos) ========= */
@@ -577,6 +578,24 @@ export default function App() {
       return () => mq.removeEventListener('change', update);
     } catch {}
   }, []);
+
+  useEffect(() => {
+    document.title = "Acid IA";
+    const ensureFavicon = () => {
+      const selector = "link[rel='icon']";
+      let link = document.querySelector<HTMLLinkElement>(selector);
+      if (!link) {
+        link = document.createElement("link");
+        link.rel = "icon";
+        document.head.appendChild(link);
+      }
+      link.type = "image/x-icon";
+      if (link.href !== faviconUrl) {
+        link.href = faviconUrl;
+      }
+    };
+    ensureFavicon();
+  }, [faviconUrl]);
 
   // Secuencia final: fade a negro → título → fade out → mostrar contenido
   // Ajuste: que aparezca en el "medio" del HERO
