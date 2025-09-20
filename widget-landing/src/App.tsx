@@ -29,7 +29,7 @@ function Nav({ active, visible, isDark }: { active: string; visible: boolean; is
       initial={false}
       animate={{ opacity: visible ? 1 : 0, y: visible ? 0 : -12 }}
       transition={{ duration: 0.25 }}
-      className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 rounded-2xl border ${
+      className={`fixed top-4 left-1/2 -translate-x-1/2 z-[200] rounded-2xl border ${
         isDark ? "border-white/10 bg-black/60" : "border-black/10 bg-white/80"
       } ${lowPower ? "" : "backdrop-blur"} px-2 py-2 ${visible ? "pointer-events-auto" : "pointer-events-none"}
       max-w-[92vw] overflow-x-auto`}
@@ -68,7 +68,7 @@ function Section({
   className = "",
 }: {
   id?: string;
-  title: string;
+  title: ReactNode;
   children: ReactNode;
   className?: string;
 }) {
@@ -81,10 +81,22 @@ function Section({
     </section>
   );
 }
-function ValueCard({ title, children, isDark }: { title: string; children: ReactNode; isDark: boolean }) {
+function ValueCard({
+  title,
+  children,
+  isDark,
+  accent = "#183df2",
+}: {
+  title: string;
+  children: ReactNode;
+  isDark: boolean;
+  accent?: string;
+}) {
   return (
     <div className={`p-6 rounded-2xl border ${isDark ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10"}`}>
-      <h3 className="text-xl font-semibold mb-2 text-[#183df2]">{title}</h3>
+      <h3 className="text-xl font-semibold mb-2" style={{ color: accent }}>
+        {title}
+      </h3>
       <p className={isDark ? "text-white/70" : "text-black/70"}>{children}</p>
     </div>
   );
@@ -424,14 +436,16 @@ function PlanCard({ plan, isDark, onShowDetails, onScrollToContact }: {
         isDark ? "border-white/10 bg-white/5" : "border-black/10 bg-black/5"
       }`}
     >
-      <img
-        src={plan.image}
-        alt={plan.title}
-        className="h-40 w-full rounded-2xl object-cover"
-        loading="lazy"
-      />
-      <h4 className="mt-5 text-xl font-semibold">{plan.title}</h4>
-      <ul className={`mt-3 space-y-2 text-sm ${isDark ? "text-white/70" : "text-black/70"}`}>
+      <h4 className="text-xl font-semibold">{plan.title}</h4>
+      <div className="mt-4 aspect-square w-full overflow-hidden rounded-2xl">
+        <img
+          src={plan.image}
+          alt={plan.title}
+          className="h-full w-full object-cover"
+          loading="lazy"
+        />
+      </div>
+      <ul className={`mt-4 space-y-2 text-sm ${isDark ? "text-white/70" : "text-black/70"}`}>
         {plan.features.map((feature) => (
           <li key={feature} className="flex items-start gap-2">
             <span className="mt-1 h-2 w-2 rounded-full bg-[#04d9b5]" aria-hidden="true" />
@@ -450,13 +464,15 @@ function PlanCard({ plan, isDark, onShowDetails, onScrollToContact }: {
         >
           Detalles
         </button>
-        <button
-          onClick={onScrollToContact}
-          className="rounded-xl bg-[#04d9b5]/10 px-4 py-2 text-sm font-medium text-[#04d9b5] transition hover:bg-[#04d9b5]/20"
-          type="button"
-        >
-          Probar
-        </button>
+        {plan.key !== "starter" && (
+          <button
+            onClick={onScrollToContact}
+            className="rounded-xl bg-[#04d9b5]/10 px-4 py-2 text-sm font-medium text-[#04d9b5] transition hover:bg-[#04d9b5]/20"
+            type="button"
+          >
+            Probar
+          </button>
+        )}
         <button
           onClick={onScrollToContact}
           className="rounded-xl bg-[#04d9b5] px-4 py-2 text-sm font-medium text-black transition hover:brightness-110"
@@ -475,12 +491,14 @@ function PlanCarousel({
   onShowDetails,
   onScrollToContact,
   label,
+  showArrow = false,
 }: {
   plans: PlanCardData[];
   isDark: boolean;
   onShowDetails: (plan: PlanCardData) => void;
   onScrollToContact: () => void;
   label: string;
+  showArrow?: boolean;
 }) {
   return (
     <div className="mt-10">
@@ -504,6 +522,22 @@ function PlanCarousel({
             </div>
           ))}
         </div>
+        {showArrow && (
+          <div
+            className={`pointer-events-none absolute inset-y-0 right-0 flex items-center bg-gradient-to-l ${
+              isDark ? "from-black/0 via-black/10" : "from-white/0 via-white/70"
+            } to-transparent pr-3`}
+          >
+            <span
+              className={`inline-flex h-9 w-9 items-center justify-center rounded-full text-lg ${
+                isDark ? "bg-black/70 text-white/80" : "bg-white/80 text-black/70"
+              }`}
+              aria-hidden="true"
+            >
+              →
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -553,12 +587,14 @@ export default function App() {
   const titleScale     = useTransform(heroSmooth, [0, 0.5, 1], [1, 1.18, 1.36]);
 
   // Mostrar nav solo al final del hero
-  const navOpacity = useTransform(heroSmooth, [0.98, 1], [0, 1]);
+  const navTrigger = useTransform(heroSmooth, [0.86, 0.94, 0.99, 1], [0, 0.35, 0.8, 1]);
   const [navVisible, setNavVisible] = useState(false);
   useEffect(() => {
-    const unsub = navOpacity.on("change", (v) => setNavVisible(v > 0.5));
+    const unsub = navTrigger.on("change", (value) => {
+      setNavVisible(value > 0.55);
+    });
     return () => unsub();
-  }, [navOpacity]);
+  }, [navTrigger]);
 
   // Scroll-spy
   const [active, setActive] = useState("inicio");
@@ -786,21 +822,19 @@ export default function App() {
             >
               ×
             </button>
-            <div className="flex items-center gap-4">
+            <h4 id="plan-modal-title" className="text-2xl font-semibold">
+              {activePlan.title}
+            </h4>
+            <div className="mt-4 aspect-square w-full overflow-hidden rounded-2xl">
               <img
                 src={activePlan.image}
                 alt={activePlan.title}
-                className="h-20 w-20 rounded-2xl object-cover"
+                className="h-full w-full object-cover"
               />
-              <div>
-                <h4 id="plan-modal-title" className="text-2xl font-semibold">
-                  {activePlan.title}
-                </h4>
-                {activePlan.price && (
-                  <div className="mt-2 text-sm font-semibold text-[#04d9b5]">{activePlan.price}</div>
-                )}
-              </div>
             </div>
+            {activePlan.price && (
+              <div className="mt-4 text-sm font-semibold text-[#04d9b5]">{activePlan.price}</div>
+            )}
             <div className="mt-6 space-y-5">
               {activePlan.sections
                 .filter((section) => section.title !== "Características destacadas")
@@ -842,13 +876,15 @@ export default function App() {
               >
                 Agregar al carrito
               </button>
-              <button
-                onClick={closeAndContact}
-                className="rounded-xl bg-[#04d9b5]/10 px-4 py-2 text-sm font-medium text-[#04d9b5] transition hover:bg-[#04d9b5]/20"
-                type="button"
-              >
-                Probar
-              </button>
+              {activePlan.key !== "starter" && (
+                <button
+                  onClick={closeAndContact}
+                  className="rounded-xl bg-[#04d9b5]/10 px-4 py-2 text-sm font-medium text-[#04d9b5] transition hover:bg-[#04d9b5]/20"
+                  type="button"
+                >
+                  Probar
+                </button>
+              )}
             </div>
           </motion.div>
         </div>
@@ -928,13 +964,21 @@ export default function App() {
           Automatizamos tus procesos con herramientas de inteligencia artificial diseñadas a las necesidades reales de tu negocio. Combinamos analítica, ciencia de datos y machine learning para detectar oportunidades, anticipar demanda y entregar información accionable a cada equipo.
         </p>
         <div className="mt-12 grid md:grid-cols-3 gap-6 text-left">
-          <ValueCard isDark={isDark} title="Automatización con propósito">Mapeamos la operación y la convertimos en experiencias conversacionales que capturan datos útiles sin perder el tono humano de tu marca.</ValueCard>
-          <ValueCard isDark={isDark} title="Analítica + ciencia de datos">Integramos tus fuentes, limpiamos la señal y construimos tableros que cuentan la historia completa de tu negocio en tiempo real.</ValueCard>
+          <ValueCard isDark={isDark} accent="#ff8a00" title="Automatización con propósito">Mapeamos la operación y la convertimos en experiencias conversacionales que capturan datos útiles sin perder el tono humano de tu marca.</ValueCard>
+          <ValueCard isDark={isDark} accent="#a200ff" title="Analítica + ciencia de datos">Integramos tus fuentes, limpiamos la señal y construimos tableros que cuentan la historia completa de tu negocio en tiempo real.</ValueCard>
           <ValueCard isDark={isDark} title="Machine learning aplicado">Entrenamos modelos que aprenden de tu operación para segmentar, recomendar y detectar patrones antes de que se conviertan en problemas.</ValueCard>
         </div>
       </Section>
 
-      <Section title="Servicio al cliente 24/7" className="pt-0 pb-16">
+      <Section
+        title={
+          <>
+            <span className="text-[#a200ff]">Servicio</span> al cliente{' '}
+            <span className="text-[#ff8a00]">24/7</span>
+          </>
+        }
+        className="pt-0 pb-16"
+      >
         <div className={`mx-auto max-w-3xl text-center text-lg leading-relaxed ${isDark ? "text-white/80" : "text-black/80"}`}>
           <p>
             Nuestra IA nunca duerme, pero detrás siempre hay humanos listos para intervenir. Si una conversación necesita empatía o criterio, nuestro equipo toma el control sin tickets interminables ni respuestas enlatadas.
@@ -946,7 +990,15 @@ export default function App() {
       </Section>
 
       {/* ===== PLANES Y PRECIOS ===== */}
-      <Section id="planes" title="Nuestros planes y precios">
+      <Section
+        id="planes"
+        title={
+          <>
+            Nuestros <span className="text-[#ff8a00]">planes</span> y{' '}
+            <span className="text-[#04d9b5]">precios</span>
+          </>
+        }
+      >
         <p className={`text-lg text-center max-w-3xl mx-auto ${isDark ? "text-white/80" : "text-black/80"}`}>
           Diseñamos paquetes modulares para activar <span className="text-[#04d9b5]">IA en tu operación</span> sin fricción.
           Elige el plan que necesitas hoy y escala con nosotros cuando estés listo.
@@ -958,6 +1010,7 @@ export default function App() {
           onShowDetails={(p) => setActivePlan(p)}
           onScrollToContact={scrollToContact}
           label="Módulos y add-ons"
+          showArrow
         />
 
         <PlanCarousel
@@ -1010,9 +1063,97 @@ export default function App() {
         </p>
         <ContactForm isDark={isDark} />
       </Section>
+
+      <Footer isDark={isDark} />
     </div>
   );
 }
+
+function Footer({ isDark }: { isDark: boolean }) {
+  const textColor = isDark ? "text-white/60" : "text-black/60";
+  const linkBase = isDark ? "text-white/70 hover:text-white" : "text-black/70 hover:text-black";
+
+  return (
+    <footer
+      className={`border-t ${isDark ? "border-white/10 bg-black" : "border-black/10 bg-white"}`}
+    >
+      <div className="mx-auto flex flex-col gap-6 px-6 py-10 md:flex-row md:items-center md:justify-between max-w-6xl">
+        <div className="flex flex-wrap items-center gap-4">
+          <a
+            href="https://www.facebook.com/AcidIA"
+            target="_blank"
+            rel="noreferrer"
+            className={`flex items-center gap-2 ${linkBase}`}
+          >
+            <FacebookIcon className={isDark ? "text-white/70" : "text-black/70"} />
+            <span>Facebook</span>
+          </a>
+          <a
+            href="https://www.instagram.com/acid_ia?igsh=MW8wcG11YWEyN2tqaQ=="
+            target="_blank"
+            rel="noreferrer"
+            className={`flex items-center gap-2 ${linkBase}`}
+          >
+            <InstagramIcon className={isDark ? "text-white/70" : "text-black/70"} />
+            <span>Instagram</span>
+          </a>
+          <a
+            href="#"
+            className={`flex items-center gap-2 ${linkBase}`}
+          >
+            <span>Aviso de privacidad</span>
+          </a>
+        </div>
+        <div className={`text-xs ${textColor}`}>
+          <a
+            href="https://openai.com"
+            target="_blank"
+            rel="noreferrer"
+            className={linkBase}
+          >
+            Powered by OpenAI
+          </a>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+function FacebookIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      className={className}
+      width={18}
+      height={18}
+      aria-hidden="true"
+    >
+      <path
+        fill="currentColor"
+        d="M22 12.07C22 6.49 17.52 2 11.93 2S1.86 6.49 1.86 12.07c0 4.89 3.58 8.95 8.26 9.87v-6.99H7.9v-2.88h2.22V9.79c0-2.2 1.31-3.42 3.32-3.42.96 0 1.96.17 1.96.17v2.17h-1.1c-1.08 0-1.42.67-1.42 1.36v1.63h2.42l-.39 2.88h-2.03v6.99c4.68-.92 8.26-4.99 8.26-9.87Z"
+      />
+    </svg>
+  );
+}
+
+function InstagramIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      className={className}
+      width={18}
+      height={18}
+      aria-hidden="true"
+    >
+      <rect x="3" y="3" width="18" height="18" rx="5" ry="5" fill="none" stroke="currentColor" strokeWidth="1.6" />
+      <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" strokeWidth="1.6" />
+      <circle cx="17.2" cy="6.8" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
 function Accordion({
   title,
   content,
