@@ -44,7 +44,7 @@ export default function PrivacyPage() {
           <h1 className="text-3xl md:text-4xl font-bold text-[#ff8a00]">Aviso de privacidad</h1>
 
           <Section title="Responsable del tratamiento de datos" textClass={bodyTone}>
-            AcidIA, proyecto operado por Luis Uribe, persona física con actividad empresarial inscrito en el régimen RESICO y RFC: UIML980407F58, con domicilio en calle 2 Oriente, Tulum, Quintana Roo, México, C.P. 77760, es responsable del uso y protección de los datos personales de los usuarios que interactúan con nuestros servicios digitales.
+            AcidIA, proyecto operado por Luis Uribe, persona física con actividad empresarial inscrito en el régimen RESICO y RFC: UIML980407F58, con domicilio en AGUAMARINA 07 M70 L1, Facc. Aldea Tulum, Tulum, México, C.P. 77734, es responsable del uso y protección de los datos personales de los usuarios que interactúan con nuestros servicios digitales.
           </Section>
 
           <Section title="Datos que recolectamos" textClass={bodyTone}>
