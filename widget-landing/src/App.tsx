@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useMemo } from "react";
-import type { ReactNode } from "react";
+import type { ReactNode, MouseEvent } from "react";
 import { motion, useScroll, useTransform, useSpring, useMotionValue } from "framer-motion";
 import type { MotionValue } from "framer-motion";
 
@@ -9,6 +9,7 @@ import ecommerceImg from "../images/ecommerce.png";
 import whatsappImg from "../images/whatsaddon.png";
 import webCoreImg from "../images/web1.png";
 import webEcommerceImg from "../images/web2.png";
+import logoMini from "../images/logo_mini.png";
 import faviconUrl from "../images/favicon.ico";
 import { sendContact } from "./lib/contact";
 
@@ -36,7 +37,12 @@ function Nav({ active, visible, isDark }: { active: string; visible: boolean; is
       max-w-[92vw] overflow-x-auto`}
       style={{ scrollbarWidth: "none" as any }}
     >
-      <ul className="flex items-center gap-2">
+      <div className="flex items-center gap-4">
+        <a href="#inicio" className="flex items-center rounded-xl px-2 py-1" aria-label="Ir al inicio">
+          <img src={logoMini} alt="Acid IA" className="h-10 w-auto" />
+          <span className="sr-only">Acid IA</span>
+        </a>
+        <ul className="flex items-center gap-2">
         {items.map(({ id, label }) => {
           const isActive = active === id;
           return (
@@ -56,7 +62,8 @@ function Nav({ active, visible, isDark }: { active: string; visible: boolean; is
             </li>
           );
         })}
-      </ul>
+        </ul>
+      </div>
     </motion.nav>
   );
 }
@@ -1091,6 +1098,11 @@ export default function App() {
 function Footer({ isDark }: { isDark: boolean }) {
   const textColor = isDark ? "text-white/60" : "text-black/60";
   const linkBase = isDark ? "text-white/70 hover:text-white" : "text-black/70 hover:text-black";
+  const handleNavigate = (event: MouseEvent<HTMLAnchorElement>, path: string) => {
+    if (window.location.pathname === path) return;
+    event.preventDefault();
+    window.location.assign(path);
+  };
 
   return (
     <footer
@@ -1116,11 +1128,21 @@ function Footer({ isDark }: { isDark: boolean }) {
             <InstagramIcon className={isDark ? "text-white/70" : "text-black/70"} />
             <span>Instagram</span>
           </a>
+        </div>
+        <div className="flex flex-wrap items-center gap-4 text-sm">
           <a
-            href="#"
-            className={`flex items-center gap-2 ${linkBase}`}
+            href="/terms"
+            className={linkBase}
+            onClick={(event) => handleNavigate(event, "/terms")}
           >
-            <span>Aviso de privacidad</span>
+            Términos y condiciones
+          </a>
+          <a
+            href="/privacy"
+            className={linkBase}
+            onClick={(event) => handleNavigate(event, "/privacy")}
+          >
+            Aviso de privacidad
           </a>
         </div>
         <div className={`text-xs ${textColor}`}>

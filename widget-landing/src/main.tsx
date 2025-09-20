@@ -1,6 +1,8 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import PrivacyPage from "./Privacy";
+import TermsPage from "./Terms";
 import "./index.css";
 
 // Habilita scroll suave solo en dispositivos capaces
@@ -10,9 +12,13 @@ try {
   if (!lowPower) document.documentElement.classList.add("smooth-scroll");
 } catch {}
 
+const normalizedPath = window.location.pathname.replace(/\/+$/, "") || "/";
+const isPrivacy = normalizedPath === "/privacy";
+const isTerms = normalizedPath === "/terms";
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <App />
+    {isPrivacy ? <PrivacyPage /> : isTerms ? <TermsPage /> : <App />}
   </React.StrictMode>
 );
 
