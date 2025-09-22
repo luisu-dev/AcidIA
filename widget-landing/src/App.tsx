@@ -19,13 +19,26 @@ const lowPower =
   isAndroid || (navigator.hardwareConcurrency || 8) <= 4 || window.devicePixelRatio >= 3;
 
 /* ========= NAV ========= */
-function Nav({ active, visible, isDark }: { active: string; visible: boolean; isDark: boolean }) {
+function Nav({ active, visible, isDark, cart }: { active: string; visible: boolean; isDark: boolean; cart: string[] }) {
   const items = [
     { id: "inicio", label: "Inicio" },
     { id: "quienes-somos", label: "Quiénes somos" },
     { id: "planes", label: "Planes" },
     { id: "contacto", label: "Contacto" },
   ];
+
+  const handleCheckout = () => {
+    // This is a simulated backend call.
+    // In a real application, you would make a request to your server
+    // with the cart items, and the server would create a Stripe Checkout
+    // session and return the URL.
+    console.log("Simulating checkout with cart:", cart);
+    // Using a placeholder link. Replace with your actual Stripe public key
+    // and a real checkout session ID from your backend.
+    const checkoutUrl = "https://buy.stripe.com/test_5kAcNbl5O6Xg7xCfZ0";
+    window.location.href = checkoutUrl;
+  };
+
   return (
     <motion.nav
       initial={false}
@@ -63,6 +76,14 @@ function Nav({ active, visible, isDark }: { active: string; visible: boolean; is
           );
         })}
         </ul>
+        {cart.length > 0 && (
+          <button
+            onClick={handleCheckout}
+            className="ml-4 rounded-xl bg-[#04d9b5] px-4 py-2 text-sm font-medium text-black transition hover:brightness-110"
+          >
+            Ir a Pagar ({cart.length})
+          </button>
+        )}
       </div>
     </motion.nav>
   );
@@ -121,6 +142,7 @@ type PlanCardData = {
   image: string;
   features: string[];
   price?: string;
+  priceId?: string;
   sections: PlanDetailSection[];
 };
 
@@ -129,6 +151,7 @@ const PLAN_CARDS: PlanCardData[] = [
     key: "starter",
     title: "Plan Starter (chat web)",
     image: starterImg,
+    priceId: "price_1PISQfRxpY3d3sYp4s2z3sYp",
     features: [
       "Widget de chat web embebible",
       "FAQs con tono de marca",
@@ -186,6 +209,7 @@ const PLAN_CARDS: PlanCardData[] = [
     key: "addon-whatsapp",
     title: "Add-on WhatsApp (canal conversacional)",
     image: whatsappImg,
+    priceId: "price_1PISQfRxpY3d3sYp4s2z3sYq",
     features: [
       "Mis respuestas del chat web en WhatsApp",
       "Leads calificados y links de pago",
@@ -233,6 +257,7 @@ const PLAN_CARDS: PlanCardData[] = [
     key: "addon-ecommerce",
     title: "Add-on E-commerce (Stripe + catálogo)",
     image: ecommerceImg,
+    priceId: "price_1PISQfRxpY3d3sYp4s2z3sYr",
     features: [
       "Cobro directo a Stripe",
       "Catálogo integrado al chat/WhatsApp",
@@ -313,6 +338,7 @@ const PLAN_CARDS: PlanCardData[] = [
     key: "paquete-web",
     title: "Paquete Páginas web + Starter",
     image: webCoreImg,
+    priceId: "price_1PISQfRxpY3d3sYp4s2z3sYs",
     features: [
       "Sitio web + Plan Starter integrado",
       "Dominio y hosting por 1 año",
@@ -364,6 +390,7 @@ const PLAN_CARDS: PlanCardData[] = [
     key: "paquete-ecommerce",
     title: "Paquete E-commerce web + Starter",
     image: webEcommerceImg,
+    priceId: "price_1PISQfRxpY3d3sYp4s2z3sYt",
     features: [
       "Tienda en línea + Plan Starter",
       "Dominio y hosting incluidos",
@@ -432,11 +459,12 @@ const GENERAL_CONDITIONS = [
   "Cada cliente es responsable de políticas, textos legales y uso legítimo de sus datos",
 ];
 
-function PlanCard({ plan, isDark, onShowDetails, onScrollToContact }: {
+function PlanCard({ plan, isDark, onShowDetails, onScrollToContact, onAddToCart }: {
   plan: PlanCardData;
   isDark: boolean;
   onShowDetails: (plan: PlanCardData) => void;
   onScrollToContact: () => void;
+  onAddToCart: (priceId: string) => void;
 }) {
   return (
     <div
@@ -472,13 +500,13 @@ function PlanCard({ plan, isDark, onShowDetails, onScrollToContact }: {
         >
           Detalles
         </button>
-        {plan.key !== "starter" && (
+        {plan.priceId && (
           <button
-            onClick={onScrollToContact}
+            onClick={() => onAddToCart(plan.priceId!)}
             className="rounded-xl bg-[#04d9b5]/10 px-4 py-2 text-sm font-medium text-[#04d9b5] transition hover:bg-[#04d9b5]/20"
             type="button"
           >
-            Probar
+            Agregar al carrito
           </button>
         )}
         <button
@@ -486,7 +514,7 @@ function PlanCard({ plan, isDark, onShowDetails, onScrollToContact }: {
           className="rounded-xl bg-[#04d9b5] px-4 py-2 text-sm font-medium text-black transition hover:brightness-110"
           type="button"
         >
-          Agregar al carrito
+          Contratar
         </button>
       </div>
     </div>
@@ -498,6 +526,7 @@ function PlanCarousel({
   isDark,
   onShowDetails,
   onScrollToContact,
+  onAddToCart,
   label,
   showArrow = false,
 }: {
@@ -505,6 +534,7 @@ function PlanCarousel({
   isDark: boolean;
   onShowDetails: (plan: PlanCardData) => void;
   onScrollToContact: () => void;
+  onAddToCart: (priceId: string) => void;
   label: string;
   showArrow?: boolean;
 }) {
@@ -526,6 +556,7 @@ function PlanCarousel({
                 isDark={isDark}
                 onShowDetails={onShowDetails}
                 onScrollToContact={onScrollToContact}
+                onAddToCart={onAddToCart}
               />
             </div>
           ))}
@@ -625,6 +656,14 @@ export default function App() {
   // Scroll-spy
   const [active, setActive] = useState("inicio");
   const [activePlan, setActivePlan] = useState<PlanCardData | null>(null);
+  const [cart, setCart] = useState<string[]>([]);
+
+  const addToCart = (priceId: string) => {
+    if (!priceId) return;
+    setCart((prevCart) => [...prevCart, priceId]);
+    alert("Plan agregado al carrito!");
+  };
+
   useEffect(() => {
     const ids = ["inicio", "quienes-somos", "planes", "contacto"];
     const sections = ids
@@ -816,7 +855,7 @@ export default function App() {
 
   return (
     <div ref={ref} className={`relative min-h-[260vh] ${isDark ? "bg-black text-white" : "bg-white text-black"}`}>
-      <Nav active={active} visible={navVisible} isDark={isDark} />
+      <Nav active={active} visible={navVisible} isDark={isDark} cart={cart} />
 
       {activePlan && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center px-4">
@@ -893,15 +932,17 @@ export default function App() {
                 className="rounded-xl bg-[#04d9b5] px-4 py-2 text-sm font-semibold text-black transition hover:brightness-110"
                 type="button"
               >
-                Comprar ahora
+                Contratar
               </button>
-              <button
-                onClick={closeAndContact}
-                className="rounded-xl border border-[#04d9b5] px-4 py-2 text-sm font-medium text-[#04d9b5] transition hover:bg-[#04d9b5]/10"
-                type="button"
-              >
-                Agregar al carrito
-              </button>
+              {activePlan.priceId && (
+                <button
+                  onClick={() => addToCart(activePlan.priceId!)}
+                  className="rounded-xl border border-[#04d9b5] px-4 py-2 text-sm font-medium text-[#04d9b5] transition hover:bg-[#04d9b5]/10"
+                  type="button"
+                >
+                  Agregar al carrito
+                </button>
+              )}
               {activePlan.key !== "starter" && (
                 <button
                   onClick={closeAndContact}
@@ -1035,6 +1076,7 @@ export default function App() {
           isDark={isDark}
           onShowDetails={(p) => setActivePlan(p)}
           onScrollToContact={scrollToContact}
+          onAddToCart={addToCart}
           label="Módulos y add-ons"
           showArrow
         />
@@ -1044,6 +1086,7 @@ export default function App() {
           isDark={isDark}
           onShowDetails={(p) => setActivePlan(p)}
           onScrollToContact={scrollToContact}
+          onAddToCart={addToCart}
           label="Paquetes web"
         />
 
