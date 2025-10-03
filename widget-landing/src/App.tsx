@@ -21,14 +21,8 @@ function Nav({ active, visible, isDark, cart }: { active: string; visible: boole
     { id: "contacto", label: "Contacto" },
   ];
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (cart.length === 0) return;
-
-    // Construir URL de Stripe con múltiples productos
-    // Formato: https://buy.stripe.com/test_xxxxx?client_reference_id=xxx&line_items[0][price]=price_xxx&line_items[0][quantity]=1&line_items[1][price]=price_yyy&line_items[1][quantity]=1
-
-    const baseUrl = "https://buy.stripe.com/test_5kAcNbl5O6Xg7xCfZ0";
-    const params = new URLSearchParams();
 
     // Agrupar productos iguales y contar cantidades
     const productCounts = cart.reduce<Record<string, number>>((acc, priceId) => {
@@ -36,15 +30,31 @@ function Nav({ active, visible, isDark, cart }: { active: string; visible: boole
       return acc;
     }, {});
 
-    // Agregar cada producto como line_item
-    Object.entries(productCounts).forEach(([priceId, quantity], index) => {
-      params.append(`line_items[${index}][price]`, priceId);
-      params.append(`line_items[${index}][quantity]`, quantity.toString());
-    });
+    const lineItems = Object.entries(productCounts).map(([priceId, quantity]) => ({
+      price: priceId,
+      quantity,
+    }));
 
-    const checkoutUrl = `${baseUrl}?${params.toString()}`;
-    console.log("Checkout URL:", checkoutUrl);
-    window.location.href = checkoutUrl;
+    // Endpoint del backend para crear Checkout Session
+    const checkoutEndpoint = import.meta.env.VITE_CHECKOUT_ENDPOINT || '/api/create-checkout-session';
+
+    try {
+      const response = await fetch(checkoutEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lineItems }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al crear sesión de pago');
+      }
+
+      const { url } = await response.json();
+      window.location.href = url;
+    } catch (error) {
+      console.error('Error en checkout:', error);
+      alert('Error al procesar el pago. Por favor intenta de nuevo.');
+    }
   };
 
   return (

@@ -1,0 +1,10 @@
+{
+  "name": "acidia-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "stripe": "^17.6.0",
+    "@vercel/node": "^3.2.25"
+  }
+}
