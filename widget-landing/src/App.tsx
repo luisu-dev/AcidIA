@@ -3,12 +3,6 @@ import type { ReactNode, MouseEvent } from "react";
 import { motion, useScroll, useTransform, useSpring, useMotionValue } from "framer-motion";
 import type { MotionValue } from "framer-motion";
 
-import starterImg from "../images/starter.png";
-import metaImg from "../images/meta.png";
-import ecommerceImg from "../images/ecommerce.png";
-import whatsappImg from "../images/whatsaddon.png";
-import webCoreImg from "../images/web1.png";
-import webEcommerceImg from "../images/web2.png";
 import logoMini from "../images/logo_mini.png";
 import faviconUrl from "../images/favicon.ico";
 import { sendContact } from "./lib/contact";
@@ -28,14 +22,28 @@ function Nav({ active, visible, isDark, cart }: { active: string; visible: boole
   ];
 
   const handleCheckout = () => {
-    // This is a simulated backend call.
-    // In a real application, you would make a request to your server
-    // with the cart items, and the server would create a Stripe Checkout
-    // session and return the URL.
-    console.log("Simulating checkout with cart:", cart);
-    // Using a placeholder link. Replace with your actual Stripe public key
-    // and a real checkout session ID from your backend.
-    const checkoutUrl = "https://buy.stripe.com/test_5kAcNbl5O6Xg7xCfZ0";
+    if (cart.length === 0) return;
+
+    // Construir URL de Stripe con múltiples productos
+    // Formato: https://buy.stripe.com/test_xxxxx?client_reference_id=xxx&line_items[0][price]=price_xxx&line_items[0][quantity]=1&line_items[1][price]=price_yyy&line_items[1][quantity]=1
+
+    const baseUrl = "https://buy.stripe.com/test_5kAcNbl5O6Xg7xCfZ0";
+    const params = new URLSearchParams();
+
+    // Agrupar productos iguales y contar cantidades
+    const productCounts = cart.reduce<Record<string, number>>((acc, priceId) => {
+      acc[priceId] = (acc[priceId] || 0) + 1;
+      return acc;
+    }, {});
+
+    // Agregar cada producto como line_item
+    Object.entries(productCounts).forEach(([priceId, quantity], index) => {
+      params.append(`line_items[${index}][price]`, priceId);
+      params.append(`line_items[${index}][quantity]`, quantity.toString());
+    });
+
+    const checkoutUrl = `${baseUrl}?${params.toString()}`;
+    console.log("Checkout URL:", checkoutUrl);
     window.location.href = checkoutUrl;
   };
 
@@ -145,299 +153,6 @@ type PlanCardData = {
   priceId?: string;
   sections: PlanDetailSection[];
 };
-
-const PLAN_CARDS: PlanCardData[] = [
-  {
-    key: "starter",
-    title: "Plan Starter (chat web)",
-    image: starterImg,
-    priceId: "price_1PISQfRxpY3d3sYp4s2z3sYp",
-    features: [
-      "Widget de chat web embebible",
-      "FAQs con tono de marca",
-      "Leads calificados con 1 flujo preconfigurado",
-      "Redirecciones a WhatsApp o URLs",
-    ],
-    price: "$1,500 MXN/mes (+IVA)",
-    sections: [
-      {
-        title: "Características destacadas",
-        items: [
-          "Widget de chat web personalizable",
-          "FAQs ajustadas al tono de la marca",
-          "Flujos automatizados para calificar leads",
-          "Redirecciones inteligentes a WhatsApp o páginas clave",
-        ],
-      },
-      {
-        title: "Detalles",
-        body: "Plantillas de flujo sugeridas (elige una y la afinamos a tu operación):",
-        items: [
-          "Calificar lead: capturamos datos de contacto, presupuesto y prioridad para tu equipo comercial",
-          "Cotización básica: recogemos alcance, integraciones y urgencia del proyecto",
-          "Soporte pre-venta: identificamos el motivo, producto de interés y datos de contacto",
-          "Límites de uso mensuales: 1M tokens de entrada + 1M tokens de salida",
-          "Métricas: aperturas, primera interacción, clics a WhatsApp y export de leads a CSV",
-        ],
-      },
-      {
-        title: "Qué incluye",
-        items: [
-          "Instalación del widget (snippet + guía)",
-          "1 flujo preconfigurado a elegir",
-          "Ajuste básico de FAQs y tono",
-        ],
-      },
-      {
-        title: "Qué se entrega",
-        items: [
-          "Snippet para insertar en tu sitio",
-          "Acceso a export de leads/eventos",
-          "Notificaciones por correo y WhatsApp",
-        ],
-      },
-      {
-        title: "Requisitos",
-        items: [
-          "Sitio web donde incrustar el widget",
-          "FAQs base y mensajes legales/políticas",
-        ],
-      },
-    ],
-  },
-  {
-    key: "addon-whatsapp",
-    title: "Add-on WhatsApp (canal conversacional)",
-    image: whatsappImg,
-    priceId: "price_1PISQfRxpY3d3sYp4s2z3sYq",
-    features: [
-      "Mis respuestas del chat web en WhatsApp",
-      "Leads calificados y links de pago",
-      "Detección de intención de compra",
-    ],
-    price: "$500 MXN/mes (+IVA)",
-    sections: [
-      {
-        title: "Características destacadas",
-        items: [
-          "Replica el cerebro del chat web en WhatsApp",
-          "FAQs + calificación de leads + envío de links de pago",
-          "Detecta intención de compra para nutrir al equipo comercial",
-        ],
-      },
-      {
-        title: "Detalles",
-        body: "Compatible con plantillas proactivas (según políticas de Meta/Twilio/BSP).",
-      },
-      {
-        title: "Qué incluye",
-        items: [
-          "Conexión al número del cliente (Meta Cloud API o Twilio)",
-          "Pruebas de intención y validación de flujos equivalentes al chat web",
-        ],
-      },
-      {
-        title: "Qué se entrega",
-        items: [
-          "Número o método de acceso habilitado",
-          "Flow operativo y checklist de pruebas",
-        ],
-      },
-      {
-        title: "Requisitos",
-        items: [
-          "Cuenta WhatsApp Business API aprobada",
-          "Plantillas preaprobadas por el cliente (si se usarán mensajes proactivos)",
-          "Costos del proveedor (Meta/Twilio/BSP) a cargo del cliente",
-        ],
-      },
-    ],
-  },
-  {
-    key: "addon-ecommerce",
-    title: "Add-on E-commerce (Stripe + catálogo)",
-    image: ecommerceImg,
-    priceId: "price_1PISQfRxpY3d3sYp4s2z3sYr",
-    features: [
-      "Cobro directo a Stripe",
-      "Catálogo integrado al chat/WhatsApp",
-      "Automatización con IA para compras",
-    ],
-    price: "$1,500 MXN setup único (+IVA)",
-    sections: [
-      {
-        title: "Características destacadas",
-        items: [
-          "Cobros directos en tu Stripe (Connect Express)",
-          "Catálogo integrado en chat y WhatsApp",
-          "Automatización con IA para guiar la compra",
-        ],
-      },
-      {
-        title: "Detalles",
-        items: [
-          "Setup Stripe Connect Express (onboarding + conexión de cuenta)",
-          "Configuración de Checkout y pruebas en test/live",
-          "Carga/normalización de hasta 500 productos desde catalog_url (JSON)",
-          "Actualización de catálogos y soporte para price_id/product_id",
-          "Mantenimiento mensual opcional a definir",
-        ],
-      },
-      {
-        title: "Qué se entrega",
-        items: [
-          "Catálogo normalizado y visible en el widget",
-          "Stripe listo para cobrar vía chat",
-        ],
-      },
-      {
-        title: "Requisitos",
-        items: [
-          "Cuenta Stripe activa con acceso al dashboard",
-          "catalog_url público con productos y precios",
-        ],
-      },
-    ],
-  },
-  {
-    key: "modulo-meta",
-    title: "Módulo Meta (próximamente)",
-    image: metaImg,
-    features: [
-      "Automatización de DM y comentarios",
-      "Respuestas y redirecciones alineadas a políticas",
-      "Registro de eventos por tenant",
-    ],
-    sections: [
-      {
-        title: "Características destacadas",
-        items: [
-          "Atención automatizada en DM y comentarios de Facebook/Instagram",
-          "Respuestas públicas y privados con redirecciones a WhatsApp o URLs",
-          "Cumplimiento con políticas de Meta",
-        ],
-      },
-      {
-        title: "Detalles",
-        body: "Respuesta pública + mensaje privado cuando aplique, con registro de eventos por tenant.",
-      },
-      {
-        title: "Precio",
-        body: "Se definirá al momento del lanzamiento.",
-      },
-      {
-        title: "Requisitos",
-        items: [
-          "Páginas y cuentas de Instagram con permisos completos",
-          "Business Manager configurado",
-        ],
-      },
-    ],
-  },
-  {
-    key: "paquete-web",
-    title: "Paquete Páginas web + Starter",
-    image: webCoreImg,
-    priceId: "price_1PISQfRxpY3d3sYp4s2z3sYs",
-    features: [
-      "Sitio web + Plan Starter integrado",
-      "Dominio y hosting por 1 año",
-      "Correo empresarial incluido",
-    ],
-    price: "Pago inicial: $5,000 MXN | Mensual: $1,500 MXN (+IVA)",
-    sections: [
-      {
-        title: "Características destacadas",
-        items: [
-          "Sitio web nuevo con Plan Starter listo",
-          "Dominio .com o .com.mx gratis por 1 año",
-          "Hosting incluido y correo empresarial (hasta 3 alias)",
-        ],
-      },
-      {
-        title: "Detalles",
-        items: [
-          "CMS Wix/WordPress autoadministrable o código administrado por nosotros",
-          "Hosting incluido durante el primer año",
-          "Inserción del widget Starter",
-        ],
-      },
-      {
-        title: "Qué incluye",
-        items: [
-          "Implementación del sitio",
-          "Alta de dominio y hosting",
-          "Mantenimiento mensual y actualizaciones ilimitadas",
-        ],
-      },
-      {
-        title: "Qué se entrega",
-        items: [
-          "Sitio publicado con accesos",
-          "Snippet del widget y guía",
-        ],
-      },
-      {
-        title: "Requisitos",
-        items: [
-          "Contenidos, imágenes y branding del cliente",
-          "Estructura deseada del sitio",
-        ],
-      },
-    ],
-  },
-  {
-    key: "paquete-ecommerce",
-    title: "Paquete E-commerce web + Starter",
-    image: webEcommerceImg,
-    priceId: "price_1PISQfRxpY3d3sYp4s2z3sYt",
-    features: [
-      "Tienda en línea + Plan Starter",
-      "Dominio y hosting incluidos",
-      "Integración a plataforma elegida",
-    ],
-    price: "Pago inicial: $6,000 MXN | Mensual: $2,000 MXN (+IVA)",
-    sections: [
-      {
-        title: "Características destacadas",
-        items: [
-          "Sitio e-commerce con Plan Starter",
-          "Dominio .com o .com.mx gratis por 1 año",
-          "Correo empresarial y hosting incluidos",
-        ],
-      },
-      {
-        title: "Detalles",
-        items: [
-          "Implementación en Shopify (licencia del cliente), WooCommerce o Mercado Shops",
-          "Hosting incluido el primer año dependiendo de la plataforma",
-          "Integración básica con la plataforma elegida",
-        ],
-      },
-      {
-        title: "Qué incluye",
-        items: [
-          "Implementación de la tienda y widget Starter",
-          "Mantenimiento mensual y actualizaciones ilimitadas",
-        ],
-      },
-      {
-        title: "Qué se entrega",
-        items: [
-          "Tienda publicada con accesos",
-          "Snippets y documentación del widget",
-        ],
-      },
-      {
-        title: "Requisitos",
-        items: [
-          "Catálogo de productos, políticas y medios de pago",
-          "Stripe u otros medios configurados en la plataforma",
-        ],
-      },
-    ],
-  },
-];
 
 const CLIENT_REQUIREMENTS = [
   "Starter: sitio web donde insertar el widget y FAQs base",
@@ -587,6 +302,31 @@ export default function App() {
   const ref = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLElement | null>(null);
 
+  // Estado para el catálogo cargado
+  const [planCards, setPlanCards] = useState<PlanCardData[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+
+  // Cargar catálogo desde URL
+  useEffect(() => {
+    const catalogUrl = import.meta.env.VITE_CATALOG_URL || "https://acidia.app/catalog.json";
+
+    fetch(catalogUrl)
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return res.json();
+      })
+      .then(data => {
+        setPlanCards(data.plans || []);
+        setCatalogLoading(false);
+      })
+      .catch(err => {
+        console.error("Error loading catalog:", err);
+        setCatalogError(err.message);
+        setCatalogLoading(false);
+      });
+  }, []);
+
   // Scroll driver (global) — ya no usado directamente
   // Eliminado para evitar warning TS6133 (noUnusedLocals)
   // Progreso del HERO únicamente
@@ -720,8 +460,8 @@ export default function App() {
     scrollToContact();
   };
 
-  const primaryPlans = PLAN_CARDS.slice(0, 4);
-  const webPlans = PLAN_CARDS.slice(4);
+  const primaryPlans = planCards.slice(0, 4);
+  const webPlans = planCards.slice(4);
 
   const lavaBlobs = useMemo(() => {
     const baseConfigs = [
@@ -1071,7 +811,28 @@ export default function App() {
           Elige el plan que necesitas hoy y escala con nosotros cuando estés listo.
         </p>
 
-        <PlanCarousel
+        {catalogLoading && (
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#04d9b5]"></div>
+            <p className="mt-4 text-sm text-white/60">Cargando planes...</p>
+          </div>
+        )}
+
+        {catalogError && (
+          <div className="text-center py-12">
+            <p className="text-red-400">Error al cargar el catálogo: {catalogError}</p>
+          </div>
+        )}
+
+        {!catalogLoading && !catalogError && planCards.length === 0 && (
+          <div className="text-center py-12">
+            <p className="text-white/60">No hay planes disponibles</p>
+          </div>
+        )}
+
+        {!catalogLoading && !catalogError && planCards.length > 0 && (
+          <>
+            <PlanCarousel
           plans={primaryPlans}
           isDark={isDark}
           onShowDetails={(p) => setActivePlan(p)}
@@ -1093,6 +854,8 @@ export default function App() {
         <p className={`mt-8 text-sm text-center ${isDark ? "text-white/60" : "text-black/60"}`}>
           * Precios en MXN. No incluyen IVA. Podemos combinar planes o armar uno a medida.
         </p>
+          </>
+        )}
         <div className="mt-12 grid gap-6 lg:grid-cols-2">
           <Accordion
             isDark={isDark}
