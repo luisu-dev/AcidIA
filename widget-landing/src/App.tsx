@@ -38,6 +38,9 @@ function Nav({ active, visible, isDark, cart }: { active: string; visible: boole
     // Endpoint del backend para crear Checkout Session
     const checkoutEndpoint = import.meta.env.VITE_CHECKOUT_ENDPOINT || '/api/create-checkout-session';
 
+    console.log('🛒 Iniciando checkout con:', lineItems);
+    console.log('📡 Endpoint:', checkoutEndpoint);
+
     try {
       const response = await fetch(checkoutEndpoint, {
         method: 'POST',
@@ -45,15 +48,24 @@ function Nav({ active, visible, isDark, cart }: { active: string; visible: boole
         body: JSON.stringify({ lineItems }),
       });
 
+      console.log('📥 Response status:', response.status);
+
+      const data = await response.json();
+      console.log('📦 Response data:', data);
+
       if (!response.ok) {
-        throw new Error('Error al crear sesión de pago');
+        throw new Error(data.error || 'Error al crear sesión de pago');
       }
 
-      const { url } = await response.json();
-      window.location.href = url;
-    } catch (error) {
-      console.error('Error en checkout:', error);
-      alert('Error al procesar el pago. Por favor intenta de nuevo.');
+      if (!data.url) {
+        throw new Error('No se recibió URL de checkout');
+      }
+
+      console.log('✅ Redirigiendo a:', data.url);
+      window.location.href = data.url;
+    } catch (error: any) {
+      console.error('❌ Error en checkout:', error);
+      alert(`Error al procesar el pago: ${error.message}\n\nRevisa la consola para más detalles.`);
     }
   };
 
