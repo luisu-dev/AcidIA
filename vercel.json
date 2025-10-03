@@ -1,7 +1,7 @@
 {
   "buildCommand": "cd widget-landing && npm run build",
   "outputDirectory": "widget-landing/dist",
-  "installCommand": "npm install --prefix . && npm install --prefix widget-landing",
+  "installCommand": "npm install && cd widget-landing && npm install",
   "functions": {
     "api/**/*.ts": {
       "runtime": "nodejs20.x"
