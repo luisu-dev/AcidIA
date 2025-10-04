@@ -49,6 +49,15 @@ function Nav({ active, visible, isDark, cart }: { active: string; visible: boole
       });
 
       console.log('📥 Response status:', response.status);
+      console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
+
+      // Verificar si la respuesta es JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('❌ Respuesta no es JSON:', text.substring(0, 200));
+        throw new Error('El servidor no respondió correctamente. Verifica la configuración del endpoint.');
+      }
 
       const data = await response.json();
       console.log('📦 Response data:', data);
