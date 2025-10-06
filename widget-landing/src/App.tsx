@@ -13,70 +13,13 @@ const lowPower =
   isAndroid || (navigator.hardwareConcurrency || 8) <= 4 || window.devicePixelRatio >= 3;
 
 /* ========= NAV ========= */
-function Nav({ active, visible, isDark, cart }: { active: string; visible: boolean; isDark: boolean; cart: string[] }) {
+function Nav({ active, visible, isDark, cart, onOpenCart }: { active: string; visible: boolean; isDark: boolean; cart: string[]; onOpenCart: () => void }) {
   const items = [
     { id: "inicio", label: "Inicio" },
     { id: "quienes-somos", label: "Quiénes somos" },
     { id: "planes", label: "Planes" },
     { id: "contacto", label: "Contacto" },
   ];
-
-  const handleCheckout = async () => {
-    if (cart.length === 0) return;
-
-    // Agrupar productos iguales y contar cantidades
-    const productCounts = cart.reduce<Record<string, number>>((acc, priceId) => {
-      acc[priceId] = (acc[priceId] || 0) + 1;
-      return acc;
-    }, {});
-
-    const lineItems = Object.entries(productCounts).map(([priceId, quantity]) => ({
-      price: priceId,
-      quantity,
-    }));
-
-    // Endpoint del backend para crear Checkout Session
-    const checkoutEndpoint = import.meta.env.VITE_CHECKOUT_ENDPOINT || 'https://acidia.app/api/create-checkout-session';
-
-    console.log('🛒 Iniciando checkout con:', lineItems);
-    console.log('📡 Endpoint:', checkoutEndpoint);
-
-    try {
-      const response = await fetch(checkoutEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lineItems }),
-      });
-
-      console.log('📥 Response status:', response.status);
-      console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
-
-      // Verificar si la respuesta es JSON
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        console.error('❌ Respuesta no es JSON:', text.substring(0, 200));
-        throw new Error('El servidor no respondió correctamente. Verifica la configuración del endpoint.');
-      }
-
-      const data = await response.json();
-      console.log('📦 Response data:', data);
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Error al crear sesión de pago');
-      }
-
-      if (!data.url) {
-        throw new Error('No se recibió URL de checkout');
-      }
-
-      console.log('✅ Redirigiendo a:', data.url);
-      window.location.href = data.url;
-    } catch (error: any) {
-      console.error('❌ Error en checkout:', error);
-      alert(`Error al procesar el pago: ${error.message}\n\nRevisa la consola para más detalles.`);
-    }
-  };
 
   return (
     <motion.nav
@@ -117,10 +60,10 @@ function Nav({ active, visible, isDark, cart }: { active: string; visible: boole
         </ul>
         {cart.length > 0 && (
           <button
-            onClick={handleCheckout}
+            onClick={onOpenCart}
             className="ml-4 rounded-xl bg-[#04d9b5] px-4 py-2 text-sm font-medium text-black transition hover:brightness-110"
           >
-            Ir a Pagar ({cart.length})
+            🛒 Carrito ({cart.length})
           </button>
         )}
       </div>
@@ -428,11 +371,78 @@ export default function App() {
   const [active, setActive] = useState("inicio");
   const [activePlan, setActivePlan] = useState<PlanCardData | null>(null);
   const [cart, setCart] = useState<string[]>([]);
+  const [showCart, setShowCart] = useState(false);
 
   const addToCart = (priceId: string) => {
     if (!priceId) return;
     setCart((prevCart) => [...prevCart, priceId]);
     alert("Plan agregado al carrito!");
+  };
+
+  const removeFromCart = (index: number) => {
+    setCart((prevCart) => prevCart.filter((_, i) => i !== index));
+  };
+
+  const clearCart = () => {
+    setCart([]);
+  };
+
+  const handleCheckout = async () => {
+    if (cart.length === 0) return;
+
+    // Agrupar productos iguales y contar cantidades
+    const productCounts = cart.reduce<Record<string, number>>((acc, priceId) => {
+      acc[priceId] = (acc[priceId] || 0) + 1;
+      return acc;
+    }, {});
+
+    const lineItems = Object.entries(productCounts).map(([priceId, quantity]) => ({
+      price: priceId,
+      quantity,
+    }));
+
+    // Endpoint del backend para crear Checkout Session
+    const checkoutEndpoint = import.meta.env.VITE_CHECKOUT_ENDPOINT || 'https://acidia.app/api/create-checkout-session';
+
+    console.log('🛒 Iniciando checkout con:', lineItems);
+    console.log('📡 Endpoint:', checkoutEndpoint);
+
+    try {
+      const response = await fetch(checkoutEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lineItems }),
+      });
+
+      console.log('📥 Response status:', response.status);
+      console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
+
+      // Verificar si la respuesta es JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('❌ Respuesta no es JSON:', text.substring(0, 200));
+        throw new Error('El servidor no respondió correctamente. Verifica la configuración del endpoint.');
+      }
+
+      const data = await response.json();
+      console.log('📦 Response data:', data);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al crear sesión de pago');
+      }
+
+      if (!data.url) {
+        throw new Error('No se recibió URL de checkout');
+      }
+
+      console.log('✅ Redirigiendo a:', data.url);
+      window.location.href = data.url;
+      setShowCart(false);
+    } catch (error: any) {
+      console.error('❌ Error en checkout:', error);
+      alert(`Error al procesar el pago: ${error.message}\n\nRevisa la consola para más detalles.`);
+    }
   };
 
   useEffect(() => {
@@ -626,7 +636,7 @@ export default function App() {
 
   return (
     <div ref={ref} className={`relative min-h-[260vh] ${isDark ? "bg-black text-white" : "bg-white text-black"}`}>
-      <Nav active={active} visible={navVisible} isDark={isDark} cart={cart} />
+      <Nav active={active} visible={navVisible} isDark={isDark} cart={cart} onOpenCart={() => setShowCart(true)} />
 
       {activePlan && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center px-4">
@@ -728,6 +738,84 @@ export default function App() {
         </div>
       )}
 
+      {showCart && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center px-4">
+          <div
+            className="absolute inset-0 bg-black/70"
+            onClick={() => setShowCart(false)}
+            role="presentation"
+          />
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25 }}
+            className={`relative w-full max-w-md rounded-3xl border p-6 shadow-xl ${
+              isDark
+                ? "border-white/10 bg-black/90 text-white"
+                : "border-black/10 bg-white text-black"
+            }`}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cart-modal-title"
+          >
+            <button
+              onClick={() => setShowCart(false)}
+              className={`absolute right-4 top-4 rounded-full border px-2 py-1 text-sm ${
+                isDark ? "border-white/20 text-white/70 hover:text-white" : "border-black/10 text-black/60 hover:text-black"
+              }`}
+              aria-label="Cerrar"
+              type="button"
+            >
+              ×
+            </button>
+            <h4 id="cart-modal-title" className="text-2xl font-semibold">
+              🛒 Carrito ({cart.length})
+            </h4>
+            {cart.length === 0 ? (
+              <p className={`mt-4 text-sm ${isDark ? "text-white/70" : "text-black/70"}`}>
+                El carrito está vacío
+              </p>
+            ) : (
+              <>
+                <ul className="mt-4 space-y-2 max-h-60 overflow-y-auto">
+                  {cart.map((priceId, index) => {
+                    const plan = planCards.find(p => p.priceId === priceId);
+                    return (
+                      <li key={`${priceId}-${index}`} className={`flex items-center justify-between gap-2 p-2 rounded-lg ${isDark ? "bg-white/5" : "bg-black/5"}`}>
+                        <span className="text-sm flex-1">{plan?.title || priceId}</span>
+                        <button
+                          onClick={() => removeFromCart(index)}
+                          className="text-red-500 hover:text-red-600 text-sm px-2 py-1"
+                          type="button"
+                        >
+                          ✕
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <div className="mt-6 flex gap-2">
+                  <button
+                    onClick={handleCheckout}
+                    className="flex-1 rounded-xl bg-[#04d9b5] px-4 py-2 text-sm font-semibold text-black transition hover:brightness-110"
+                    type="button"
+                  >
+                    Ir a Pagar
+                  </button>
+                  <button
+                    onClick={clearCart}
+                    className={`rounded-xl border px-4 py-2 text-sm ${isDark ? "border-white/20 text-white/70 hover:bg-white/10" : "border-black/20 text-black/70 hover:bg-black/10"}`}
+                    type="button"
+                  >
+                    Vaciar
+                  </button>
+                </div>
+              </>
+            )}
+          </motion.div>
+        </div>
+      )}
+
       {/* ===== HERO: lava lamp ===== */}
       <section id="inicio" ref={heroRef as any} className="relative h-[200vh] z-0">
         <div className="sticky top-0 h-screen overflow-hidden z-40">
@@ -790,9 +878,12 @@ export default function App() {
             </motion.h1>
           </motion.div>
 
-          <div className="absolute inset-x-0 bottom-10 text-center text-xs tracking-widest uppercase opacity-60">
+          <motion.div
+            className="absolute inset-x-0 bottom-10 text-center text-xs tracking-widest uppercase"
+            style={{ opacity: useTransform(heroSmooth, [0, 0.3, 0.6], [0.6, 0.4, 0]) }}
+          >
             Desliza para revelar
-          </div>
+          </motion.div>
         </div>
       </section>
 
