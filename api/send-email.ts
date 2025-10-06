@@ -28,7 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'AcidIA <onboarding@acidia.app>',
+        from: 'AcidIA <onboarding@resend.dev>',
         to: [to],
         subject,
         html,
