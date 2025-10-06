@@ -48,7 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Crear sesión de Checkout
     const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
+      mode: 'subscription',
       line_items: lineItems,
       success_url: `${req.headers.origin || 'https://acidia.app'}/?success=true`,
       cancel_url: `${req.headers.origin || 'https://acidia.app'}/?canceled=true`,
