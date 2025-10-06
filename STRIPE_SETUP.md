@@ -113,11 +113,45 @@ stripe listen --forward-to localhost:3000/api/stripe-webhook
 
 Esto te dará un webhook secret temporal para desarrollo.
 
-## Emails
+## Configurar Resend para enviar correos
 
-Para enviar correos, necesitas integrar un servicio como:
-- [Resend](https://resend.com) - Recomendado, fácil de usar
-- [SendGrid](https://sendgrid.com)
-- [Postmark](https://postmarkapp.com)
+### 1. Crear cuenta y obtener API Key
+
+1. Ve a: https://resend.com/signup
+2. Verifica tu email
+3. Ve a: https://resend.com/api-keys
+4. Click **"Create API Key"**
+5. Dale un nombre: "AcidIA Production"
+6. Copia la API key (empieza con `re_...`)
+
+### 2. Verificar dominio (opcional pero recomendado)
+
+Para enviar desde `@acidia.app` en lugar de `@resend.dev`:
+
+1. Ve a: https://resend.com/domains
+2. Click **"Add Domain"**
+3. Ingresa: `acidia.app`
+4. Agrega los registros DNS que te proporciona Resend
+5. Espera verificación (puede tardar unos minutos)
+
+Si no verificas el dominio, los correos se enviarán desde `onboarding@resend.dev` pero funcionarán igual.
+
+### 3. Agregar API key a Vercel
+
+1. Ve a: https://vercel.com/[tu-proyecto]/settings/environment-variables
+2. Agrega: `RESEND_API_KEY` = Tu API key de Resend
+3. Redeploy el proyecto
+
+### 4. Probar
+
+Haz una compra de prueba en Stripe (modo test) y verifica que lleguen los correos:
+- **Cliente**: Recibe correo de bienvenida con detalles del pago
+- **Admin**: Recibe notificación con datos para onboarding
+
+## Otros servicios de email (alternativas)
+
+Si prefieres otro servicio:
+- [SendGrid](https://sendgrid.com) - Más robusto, 100 correos/día gratis
+- [Postmark](https://postmarkapp.com) - Especializado en transaccionales
 
 Actualiza la función `handleSuccessfulPayment` en `/api/stripe-webhook.ts` con tu servicio elegido.

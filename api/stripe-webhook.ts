@@ -93,37 +93,114 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
 
   try {
     // 1. Enviar recibo al cliente
-    await fetch(process.env.VITE_CONTACT_ENDPOINT || 'https://acidia.app/api/send-email', {
+    await fetch('https://acidia.app/api/send-email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         to: customerEmail,
-        subject: '✅ Pago confirmado - AcidIA',
+        subject: '✅ ¡Bienvenido a AcidIA! - Pago confirmado',
         html: `
-          <h2>¡Gracias por tu compra, ${customerName}!</h2>
-          <p>Tu pago de <strong>$${amount} MXN</strong> ha sido procesado correctamente.</p>
-          <p>Nos pondremos en contacto contigo pronto para comenzar con el onboarding.</p>
-          <hr>
-          <p><small>Este es un correo automático de AcidIA</small></p>
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+              .header { background: linear-gradient(135deg, #a200ff 0%, #04d9b5 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+              .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+              .highlight { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #04d9b5; }
+              .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1 style="margin: 0;">¡Bienvenido a AcidIA!</h1>
+              </div>
+              <div class="content">
+                <p>Hola <strong>${customerName}</strong>,</p>
+                <p>¡Gracias por confiar en nosotros! Tu pago ha sido procesado exitosamente.</p>
+
+                <div class="highlight">
+                  <h3 style="margin-top: 0; color: #a200ff;">📋 Detalles de tu compra</h3>
+                  <p><strong>Monto:</strong> $${amount.toFixed(2)} MXN</p>
+                  <p><strong>Estado:</strong> ✅ Confirmado</p>
+                  <p><strong>ID de transacción:</strong> ${session.id}</p>
+                </div>
+
+                <h3 style="color: #04d9b5;">🚀 Próximos pasos</h3>
+                <p>Nuestro equipo se pondrá en contacto contigo en las próximas <strong>24 horas</strong> para:</p>
+                <ul>
+                  <li>Iniciar el proceso de onboarding</li>
+                  <li>Configurar tu cuenta y servicios</li>
+                  <li>Resolver cualquier duda que tengas</li>
+                </ul>
+
+                <p>Si tienes alguna pregunta, responde a este correo o escríbenos.</p>
+
+                <p>¡Estamos emocionados de trabajar contigo!</p>
+                <p><strong>El equipo de AcidIA</strong></p>
+              </div>
+              <div class="footer">
+                <p>Este es un correo automático. Por favor no respondas a esta dirección.</p>
+                <p>AcidIA © 2025 - Automatización con IA</p>
+              </div>
+            </div>
+          </body>
+          </html>
         `,
       }),
     });
 
     // 2. Notificar al equipo de AcidIA
-    await fetch(process.env.VITE_CONTACT_ENDPOINT || 'https://acidia.app/api/send-email', {
+    await fetch('https://acidia.app/api/send-email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         to: process.env.ADMIN_EMAIL || 'luisu.dev@gmail.com',
-        subject: '🎉 Nuevo cliente - AcidIA',
+        subject: '🎉 Nuevo cliente en AcidIA - Acción requerida',
         html: `
-          <h2>Nuevo pago recibido</h2>
-          <p><strong>Cliente:</strong> ${customerName}</p>
-          <p><strong>Email:</strong> ${customerEmail}</p>
-          <p><strong>Monto:</strong> $${amount} MXN</p>
-          <p><strong>Session ID:</strong> ${session.id}</p>
-          <hr>
-          <p>Contacta al cliente para iniciar el onboarding.</p>
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+              .alert { background: #04d9b5; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+              .data-box { background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 10px 0; }
+              .action { background: #a200ff; color: white; padding: 15px; text-align: center; border-radius: 8px; margin: 20px 0; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="alert">
+                <h2 style="margin: 0;">🎉 Nuevo pago recibido</h2>
+              </div>
+
+              <p><strong>Se ha completado un nuevo pago en AcidIA.</strong></p>
+
+              <div class="data-box">
+                <h3 style="margin-top: 0;">👤 Información del cliente</h3>
+                <p><strong>Nombre:</strong> ${customerName}</p>
+                <p><strong>Email:</strong> <a href="mailto:${customerEmail}">${customerEmail}</a></p>
+              </div>
+
+              <div class="data-box">
+                <h3 style="margin-top: 0;">💰 Detalles del pago</h3>
+                <p><strong>Monto:</strong> $${amount.toFixed(2)} MXN</p>
+                <p><strong>Session ID:</strong> <code>${session.id}</code></p>
+                <p><strong>Fecha:</strong> ${new Date().toLocaleString('es-MX')}</p>
+              </div>
+
+              <div class="action">
+                <h3 style="margin: 0;">⚡ Acción requerida</h3>
+                <p style="margin: 10px 0 0 0;">Contacta al cliente para iniciar el onboarding</p>
+              </div>
+
+              <p style="color: #666; font-size: 12px;">Ver detalles completos en el <a href="https://dashboard.stripe.com/payments/${session.payment_intent}">Dashboard de Stripe</a></p>
+            </div>
+          </body>
+          </html>
         `,
       }),
     });
