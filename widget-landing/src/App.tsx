@@ -36,7 +36,7 @@ function Nav({ active, visible, isDark, cart }: { active: string; visible: boole
     }));
 
     // Endpoint del backend para crear Checkout Session
-    const checkoutEndpoint = import.meta.env.VITE_CHECKOUT_ENDPOINT || '/api/create-checkout-session';
+    const checkoutEndpoint = import.meta.env.VITE_CHECKOUT_ENDPOINT || 'https://acidia.app/api/create-checkout-session';
 
     console.log('🛒 Iniciando checkout con:', lineItems);
     console.log('📡 Endpoint:', checkoutEndpoint);
