@@ -81,7 +81,7 @@ function CartFab({ cart, onClick, visible, isDark }: { cart: string[]; onClick: 
       animate={{ opacity: visible ? 1 : 0, scale: visible ? 1 : 0.8 }}
       transition={{ duration: 0.25 }}
       onClick={onClick}
-      className={`md:hidden fixed bottom-6 right-6 z-[200] rounded-full p-4 shadow-lg ${
+      className={`md:hidden fixed bottom-6 left-6 z-[200] rounded-full p-4 shadow-lg ${
         visible ? "pointer-events-auto" : "pointer-events-none"
       } ${isDark ? "bg-[#04d9b5]" : "bg-[#04d9b5]"} text-black font-semibold`}
       aria-label="Ver carrito"
