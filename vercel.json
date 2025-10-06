@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm ci && cd widget-landing && npm run build && rm -rf ../dist && cp -r dist ../dist",
+  "buildCommand": "npm install && cd widget-landing && npm run build && rm -rf ../dist && cp -r dist ../dist",
   "outputDirectory": "dist",
-  "installCommand": "npm ci && cd widget-landing && npm ci"
+  "installCommand": "npm install && cd widget-landing && npm install"
 }
