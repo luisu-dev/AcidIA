@@ -316,8 +316,8 @@ export default function App() {
 
   const heroYOffset = useTransform(heroSmooth, [0, 0.5, 1], [0, -80, -220]);
 
-  // Desvanecer para revelar contenido (fade más tardío)
-  const smokeOpacity = useTransform(heroSmooth, [0, 0.85, 1.0], [1, 0.75, 0]);
+  // Desvanecer orbes al hacer scroll
+  const smokeOpacity = useTransform(heroSmooth, [0, 0.3, 0.5], [1, 0.5, 0]);
 
   // Modo de color según preferencia del usuario
   const [isDark, setIsDark] = useState(true);
@@ -349,12 +349,9 @@ export default function App() {
     ensureFavicon();
   }, [faviconUrl]);
 
-  // Secuencia final: fade a negro → título → fade out → mostrar contenido
-  // Ajuste: que aparezca en el "medio" del HERO
-  // Antes iniciaba muy tarde (~0.65). Adelantamos el rango para que
-  // el título sea visible alrededor del 50–80% del scroll del HERO.
+  // Logo aparece cuando los orbes se desvanecen
   const overlayOpacity = useTransform(heroSmooth, [0, 0.9, 1], [1, 1, 0]);
-  const titleOpacity   = useTransform(heroSmooth, [0, 0.1, 0.82, 1], [1, 1, 0.6, 0]);
+  const titleOpacity   = useTransform(heroSmooth, [0, 0.2, 0.4, 0.85, 1], [0, 0, 1, 0.8, 0]);
   const titleScale     = useTransform(heroSmooth, [0, 0.5, 1], [1, 1.18, 1.36]);
 
   // Mostrar nav solo al final del hero
@@ -880,7 +877,7 @@ export default function App() {
 
           <motion.div
             className="absolute inset-x-0 bottom-10 text-center text-xs tracking-widest uppercase"
-            style={{ opacity: useTransform(heroSmooth, [0, 0.15, 0.4, 0.7], [0, 0.6, 0.5, 0]) }}
+            style={{ opacity: useTransform(heroSmooth, [0, 0.3, 0.5], [0.6, 0.4, 0]) }}
           >
             Desliza para revelar
           </motion.div>
