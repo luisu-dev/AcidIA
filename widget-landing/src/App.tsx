@@ -61,13 +61,36 @@ function Nav({ active, visible, isDark, cart, onOpenCart }: { active: string; vi
         {cart.length > 0 && (
           <button
             onClick={onOpenCart}
-            className="ml-4 rounded-xl bg-[#04d9b5] px-4 py-2 text-sm font-medium text-black transition hover:brightness-110"
+            className="ml-4 rounded-xl bg-[#04d9b5] px-4 py-2 text-sm font-medium text-black transition hover:brightness-110 hidden md:block"
           >
             🛒 Carrito ({cart.length})
           </button>
         )}
       </div>
     </motion.nav>
+  );
+}
+
+/* ========= FAB CARRITO MÓVIL ========= */
+function CartFab({ cart, onClick, visible, isDark }: { cart: string[]; onClick: () => void; visible: boolean; isDark: boolean }) {
+  if (cart.length === 0) return null;
+
+  return (
+    <motion.button
+      initial={false}
+      animate={{ opacity: visible ? 1 : 0, scale: visible ? 1 : 0.8 }}
+      transition={{ duration: 0.25 }}
+      onClick={onClick}
+      className={`md:hidden fixed bottom-6 right-6 z-[200] rounded-full p-4 shadow-lg ${
+        visible ? "pointer-events-auto" : "pointer-events-none"
+      } ${isDark ? "bg-[#04d9b5]" : "bg-[#04d9b5]"} text-black font-semibold`}
+      aria-label="Ver carrito"
+    >
+      <div className="flex items-center gap-2">
+        <span className="text-xl">🛒</span>
+        <span className="text-sm">{cart.length}</span>
+      </div>
+    </motion.button>
   );
 }
 
@@ -634,6 +657,7 @@ export default function App() {
   return (
     <div ref={ref} className={`relative min-h-[260vh] ${isDark ? "bg-black text-white" : "bg-white text-black"}`}>
       <Nav active={active} visible={navVisible} isDark={isDark} cart={cart} onOpenCart={() => setShowCart(true)} />
+      <CartFab cart={cart} onClick={() => setShowCart(true)} visible={navVisible} isDark={isDark} />
 
       {activePlan && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center px-4">
@@ -877,9 +901,11 @@ export default function App() {
 
           <motion.div
             className="absolute inset-x-0 bottom-10 text-center text-xs tracking-widest uppercase"
-            style={{ opacity: useTransform(heroSmooth, [0, 0.3, 0.5], [0.6, 0.4, 0]) }}
+            style={{ opacity: useTransform(heroSmooth, [0, 0.3, 0.5], [1, 0.6, 0]) }}
           >
-            Desliza para revelar
+            <span className={`inline-block px-4 py-2 rounded-full ${isDark ? "bg-black/40 text-white" : "bg-white/40 text-black"}`}>
+              Desliza para revelar
+            </span>
           </motion.div>
         </div>
       </section>
