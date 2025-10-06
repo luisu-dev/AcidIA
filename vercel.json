@@ -1,5 +1,4 @@
 {
-  "installCommand": "npm install --prefix . && npm install --prefix widget-landing",
   "buildCommand": "cd widget-landing && npm run build && cd .. && rm -rf dist && cp -r widget-landing/dist dist",
   "outputDirectory": "dist"
 }
