@@ -1,16 +1,5 @@
 {
   "buildCommand": "if [ -f widget-landing/package.json ]; then (cd widget-landing && npm run build && rm -rf ../dist && cp -r dist ../dist); else npm run build; fi",
   "outputDirectory": "dist",
-  "installCommand": "if [ -f widget-landing/package.json ]; then (cd widget-landing && (npm ci || npm install)); else (npm ci || npm install); fi",
-  "functions": {
-    "api/**/*.ts": {
-      "runtime": "nodejs20.x"
-    }
-  },
-  "rewrites": [
-    {
-      "source": "/((?!api).*)",
-      "destination": "/index.html"
-    }
-  ]
+  "installCommand": "if [ -f widget-landing/package.json ]; then (cd widget-landing && (npm ci || npm install)); else (npm ci || npm install); fi"
 }
