@@ -1,5 +1,5 @@
 {
-  "buildCommand": "if [ -f widget-landing/package.json ]; then (cd widget-landing && npm run build && rm -rf ../dist && cp -r dist ../dist); else npm run build; fi",
+  "buildCommand": "npm ci && cd widget-landing && npm run build && rm -rf ../dist && cp -r dist ../dist",
   "outputDirectory": "dist",
-  "installCommand": "if [ -f widget-landing/package.json ]; then (cd widget-landing && (npm ci || npm install)); else (npm ci || npm install); fi"
+  "installCommand": "npm ci && cd widget-landing && npm ci"
 }
