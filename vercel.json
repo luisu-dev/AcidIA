@@ -1,5 +1,5 @@
 {
   "framework": null,
-  "buildCommand": "npm install && cd widget-landing && npm install && npm run build && cd .. && rm -rf dist && cp -r widget-landing/dist dist",
+  "buildCommand": "cd .. && npm install && cd widget-landing && npm install && npm run build",
   "outputDirectory": "dist"
 }
