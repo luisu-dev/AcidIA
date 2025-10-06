@@ -880,7 +880,7 @@ export default function App() {
 
           <motion.div
             className="absolute inset-x-0 bottom-10 text-center text-xs tracking-widest uppercase"
-            style={{ opacity: useTransform(heroSmooth, [0, 0.3, 0.6], [0.6, 0.4, 0]) }}
+            style={{ opacity: useTransform(heroSmooth, [0, 0.15, 0.4, 0.7], [0, 0.6, 0.5, 0]) }}
           >
             Desliza para revelar
           </motion.div>
